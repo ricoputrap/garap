@@ -33,6 +33,7 @@ export function CardView({ card, tasks }: Props) {
     transition,
     opacity: isDragging ? 0.5 : 1,
     borderTop: card.color ? `4px solid ${card.color}` : '4px solid transparent',
+    gridTemplateRows: 'auto auto 1fr auto',
   };
 
   useEffect(() => {
@@ -61,7 +62,7 @@ export function CardView({ card, tasks }: Props) {
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex flex-col bg-white rounded-lg shadow-sm border border-stone-200 ${isOver ? 'ring-2 ring-stone-400' : ''}`}
+      className={`grid bg-white rounded-lg shadow-sm border border-stone-200 max-h-[350px] ${isOver ? 'ring-2 ring-stone-400' : ''}`}
     >
       <div className="flex items-center gap-2 px-3 pt-2 pb-1">
         <span
@@ -165,7 +166,7 @@ export function CardView({ card, tasks }: Props) {
         </div>
       )}
 
-      <div ref={setDropRef} className="px-2 py-1 min-h-[8px]">
+      <div ref={setDropRef} className="px-2 py-1 min-h-[8px] overflow-y-auto">
         <SortableContext
           items={visibleTasks.map((t) => t.id)}
           strategy={verticalListSortingStrategy}
