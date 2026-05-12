@@ -10,9 +10,10 @@ import { CARD_COLORS } from '../types';
 interface Props {
   card: Card;
   tasks: Task[];
+  activeTaskId?: string | number | null;
 }
 
-export function CardView({ card, tasks }: Props) {
+export function CardView({ card, tasks, activeTaskId }: Props) {
   const { updateCard, deleteCard, addTask, hideCompleted } = useStore();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(card.title);
@@ -173,7 +174,7 @@ export function CardView({ card, tasks }: Props) {
         >
           <ul className="space-y-0.5">
             {visibleTasks.map((t) => (
-              <TaskItem key={t.id} task={t} />
+              <TaskItem key={t.id} task={t} isDragging={activeTaskId === t.id} />
             ))}
           </ul>
         </SortableContext>

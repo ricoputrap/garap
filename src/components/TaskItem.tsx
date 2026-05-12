@@ -6,9 +6,10 @@ import { useStore } from '../store';
 
 interface Props {
   task: Task;
+  isDragging?: boolean;
 }
 
-export function TaskItem({ task }: Props) {
+export function TaskItem({ task, isDragging: isDraggingProp }: Props) {
   const { updateTask, deleteTask, toggleTaskComplete, setTaskTodayFlag, setTaskWeekFlag } =
     useStore();
 
@@ -19,10 +20,12 @@ export function TaskItem({ task }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: task.id, data: { type: 'task', cardId: task.cardId } });
 
+  const isBeingDragged = isDraggingProp ?? isDragging;
+
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.4 : 1,
+    opacity: isBeingDragged ? 0.4 : 1,
     background:
       !task.completed && task.todayFlag
         ? '#fef9c3'

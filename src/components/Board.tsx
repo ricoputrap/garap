@@ -15,6 +15,7 @@ import { CardView } from './CardView';
 export function Board() {
   const { cards, tasks, reorderCards, reorderTasks, moveTaskBetweenCards } = useStore();
   const [activeType, setActiveType] = useState<'card' | 'task' | null>(null);
+  const [activeId, setActiveId] = useState<string | number | null>(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
@@ -32,10 +33,12 @@ export function Board() {
   function onDragStart(e: DragStartEvent) {
     const type = (e.active.data.current as { type?: string } | undefined)?.type;
     setActiveType(type === 'card' ? 'card' : type === 'task' ? 'task' : null);
+    setActiveId(e.active.id);
   }
 
   function onDragEnd(e: DragEndEvent) {
     setActiveType(null);
+    setActiveId(null);
     const { active, over } = e;
     if (!over) return;
     const activeData = active.data.current as { type?: string; cardId?: string } | undefined;
@@ -99,7 +102,7 @@ export function Board() {
             style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}
           >
             {sortedCards.map((c) => (
-              <CardView key={c.id} card={c} tasks={tasksByCard.get(c.id) ?? []} />
+              <CardView key={c.id} card={c} tasks={tasksByCard.get(c.id) ?? []} activeTaskId={activeId} />
             ))}
           </div>
         </SortableContext>

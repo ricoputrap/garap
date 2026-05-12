@@ -13,11 +13,14 @@ import {
 import { runFlagReset } from './lib/flagReset';
 import { uid } from './lib/id';
 
+export type NavTab = 'board' | 'today' | 'week';
+
 interface State {
   cards: Card[];
   tasks: Task[];
   hideCompleted: boolean;
   sidePanelOpen: boolean;
+  currentTab: NavTab;
 
   addCard: (title: string, color?: string) => void;
   updateCard: (id: string, patch: Partial<Pick<Card, 'title' | 'color'>>) => void;
@@ -35,6 +38,7 @@ interface State {
 
   toggleHideCompleted: () => void;
   toggleSidePanel: () => void;
+  setCurrentTab: (tab: NavTab) => void;
 }
 
 function persist(get: () => State) {
@@ -69,6 +73,7 @@ export const useStore = create<State>((set, get) => {
     tasks,
     hideCompleted: false,
     sidePanelOpen: true,
+    currentTab: 'board',
 
     addCard: (title, color) => {
       const order = get().cards.length;
@@ -194,5 +199,6 @@ export const useStore = create<State>((set, get) => {
     toggleSidePanel: () => {
       set((s) => ({ sidePanelOpen: !s.sidePanelOpen }));
     },
+    setCurrentTab: (tab) => set({ currentTab: tab }),
   };
 });

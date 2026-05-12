@@ -80,7 +80,8 @@ describe('board integration', () => {
     const readId = useStore.getState().tasks.find((t) => t.text === 'read book')!.id;
     useStore.getState().setTaskWeekFlag(readId, true);
     render(<App />);
-    await user.click(screen.getByRole('button', { name: 'Week' }));
+    const sidebar = screen.getByTestId('side-panel');
+    await user.click(within(sidebar).getByRole('button', { name: 'Week' }));
     const panel = screen.getByTestId('panel-week');
     expect(within(panel).getByText('read book')).toBeInTheDocument();
     expect(within(panel).queryByText('other')).not.toBeInTheDocument();
