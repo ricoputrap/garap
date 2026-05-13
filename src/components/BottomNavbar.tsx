@@ -1,3 +1,4 @@
+import React from 'react';
 import { useStore, type NavTab } from '../store';
 
 function BoardIcon() {
@@ -35,7 +36,7 @@ function WeekIcon() {
   );
 }
 
-const items: { tab: NavTab; label: string; Icon: () => JSX.Element }[] = [
+const items: { tab: NavTab; label: string; Icon: () => React.ReactElement }[] = [
   { tab: 'board', label: 'Board', Icon: BoardIcon },
   { tab: 'today', label: 'Today', Icon: TodayIcon },
   { tab: 'week', label: 'Week', Icon: WeekIcon },

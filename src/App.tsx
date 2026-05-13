@@ -2,6 +2,7 @@ import { Board } from './components/Board';
 import { SidePanel } from './components/SidePanel';
 import { BottomNavbar } from './components/BottomNavbar';
 import { TaskListView } from './components/TaskListView';
+import { UpdatePrompt, InstallButton } from './components/PWAPrompts';
 import { useStore } from './store';
 
 export default function App() {
@@ -31,6 +32,7 @@ export default function App() {
           />
           Hide completed
         </label>
+        <InstallButton />
         <button
           type="button"
           onClick={() => addCard('New card')}
@@ -63,6 +65,7 @@ export default function App() {
       </div>
 
       <BottomNavbar />
+      <UpdatePrompt />
     </div>
   );
 }
