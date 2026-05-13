@@ -8,7 +8,7 @@ export function SidePanel() {
 
   if (!sidePanelOpen) {
     return (
-      <aside className="border-l border-stone-200 bg-white shrink-0">
+      <aside className="border-l border-stone-200 bg-white shrink-0 h-full">
         <button
           type="button"
           onClick={toggleSidePanel}
@@ -23,7 +23,7 @@ export function SidePanel() {
   }
 
   return (
-    <aside className="w-80 shrink-0 border-l border-stone-200 bg-white flex flex-col" data-testid="side-panel">
+    <aside className="w-80 shrink-0 border-l border-stone-200 bg-white flex flex-col h-full" data-testid="side-panel">
       <div className="flex items-center border-b border-stone-200">
         <button
           type="button"
