@@ -8,10 +8,9 @@ interface Props {
   task: Task;
   isDragging?: boolean;
   disabled?: boolean;
-  noHighlight?: boolean;
 }
 
-export function TaskItem({ task, isDragging: isDraggingProp, disabled = false, noHighlight = false }: Props) {
+export function TaskItem({ task, isDragging: isDraggingProp, disabled = false }: Props) {
   const { updateTask, deleteTask, toggleTaskComplete, setTaskTodayFlag, setTaskWeekFlag } =
     useStore();
 
@@ -28,13 +27,6 @@ export function TaskItem({ task, isDragging: isDraggingProp, disabled = false, n
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isBeingDragged ? 0.4 : 1,
-    background: noHighlight
-      ? undefined
-      : !task.completed && task.todayFlag
-        ? '#fef9c3'
-        : !task.completed && task.weekFlag
-          ? '#dbeafe'
-          : undefined,
   };
 
   useEffect(() => {
