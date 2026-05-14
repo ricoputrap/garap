@@ -17,16 +17,19 @@ export function TaskListView({ tab, searchQuery = '' }: Props) {
     const cardById = new Map(cards.map((c) => [c.id, c]));
     const groups = new Map<string, { card: { id: string; title: string; color?: string }; items: typeof tasks }>();
     for (const t of tasks) {
-      if (!t[flagKey] || t.completed) continue;
+      if (!t[flagKey]) continue;
       const card = cardById.get(t.cardId);
       if (!card) continue;
       if (q && !card.title.toLowerCase().includes(q) && !t.text.toLowerCase().includes(q)) continue;
       if (!groups.has(card.id)) groups.set(card.id, { card, items: [] });
       groups.get(card.id)!.items.push(t);
     }
-    return Array.from(groups.values()).sort(
-      (a, b) =>
-        (cardById.get(a.card.id)?.order ?? 0) - (cardById.get(b.card.id)?.order ?? 0),
+    const sorted = Array.from(groups.values());
+    for (const g of sorted) {
+      g.items.sort((a, b) => Number(a.completed) - Number(b.completed));
+    }
+    return sorted.sort(
+      (a, b) => (cardById.get(a.card.id)?.order ?? 0) - (cardById.get(b.card.id)?.order ?? 0),
     );
   }, [tab, tasks, cards, searchQuery]);
 
