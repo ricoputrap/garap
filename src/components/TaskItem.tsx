@@ -15,7 +15,7 @@ export function TaskItem({ task, isDragging: isDraggingProp }: Props) {
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(task.text);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: task.id, data: { type: 'task', cardId: task.cardId } });
@@ -35,8 +35,18 @@ export function TaskItem({ task, isDragging: isDraggingProp }: Props) {
   };
 
   useEffect(() => {
-    if (editing) inputRef.current?.focus();
+    if (editing && inputRef.current) {
+      const el = inputRef.current;
+      el.style.height = 'auto';
+      el.style.height = `${el.scrollHeight}px`;
+      el.focus();
+    }
   }, [editing]);
+
+  function autoResize(el: HTMLTextAreaElement) {
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }
 
   function commitEdit() {
     const next = draft.trim();
@@ -48,7 +58,7 @@ export function TaskItem({ task, isDragging: isDraggingProp }: Props) {
     setEditing(false);
   }
 
-  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+  function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter') {
       e.preventDefault();
       commitEdit();
@@ -84,13 +94,17 @@ export function TaskItem({ task, isDragging: isDraggingProp }: Props) {
         className="accent-stone-700 shrink-0 mt-0.5"
       />
       {editing ? (
-        <input
+        <textarea
           ref={inputRef}
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          rows={1}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            autoResize(e.target);
+          }}
           onBlur={commitEdit}
           onKeyDown={onKeyDown}
-          className="flex-1 min-w-0 bg-transparent outline-none text-sm"
+          className="flex-1 min-w-0 bg-transparent outline-none text-sm resize-none overflow-hidden break-all leading-snug"
           aria-label="Edit task"
         />
       ) : (
