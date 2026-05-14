@@ -5,6 +5,10 @@ import {
   getTasks,
   saveCards,
   saveTasks,
+  getTodayTaskOrders,
+  saveTodayTaskOrders,
+  getWeekTaskOrders,
+  saveWeekTaskOrders,
   getString,
   setString,
   KEY_TODAY_RESET,
@@ -18,6 +22,8 @@ export type NavTab = 'board' | 'today' | 'week';
 interface State {
   cards: Card[];
   tasks: Task[];
+  todayTaskOrders: Record<string, string[]>;
+  weekTaskOrders: Record<string, string[]>;
   hideCompleted: boolean;
   sidePanelOpen: boolean;
   currentTab: NavTab;
@@ -34,6 +40,7 @@ interface State {
   setTaskTodayFlag: (id: string, value: boolean) => void;
   setTaskWeekFlag: (id: string, value: boolean) => void;
   reorderTasks: (cardId: string, orderedIds: string[]) => void;
+  reorderListTasks: (tab: 'today' | 'week', cardId: string, orderedIds: string[]) => void;
   moveTaskBetweenCards: (taskId: string, toCardId: string, toIndex: number) => void;
 
   toggleHideCompleted: () => void;
@@ -45,13 +52,19 @@ function persist(get: () => State) {
   const s = get();
   saveCards(s.cards);
   saveTasks(s.tasks);
+  saveTodayTaskOrders(s.todayTaskOrders);
+  saveWeekTaskOrders(s.weekTaskOrders);
 }
 
-function initialLoad(): { cards: Card[]; tasks: Task[] } {
+function initialLoad(): Pick<State, 'cards' | 'tasks' | 'todayTaskOrders' | 'weekTaskOrders'> {
   const cards = getCards();
   const tasks = getTasks();
+  const todayTaskOrders = getTodayTaskOrders();
+  const weekTaskOrders = getWeekTaskOrders();
   const out = runFlagReset({
     tasks,
+    todayTaskOrders,
+    weekTaskOrders,
     lastTodayReset: getString(KEY_TODAY_RESET),
     lastWeekReset: getString(KEY_WEEK_RESET),
   });
@@ -59,18 +72,61 @@ function initialLoad(): { cards: Card[]; tasks: Task[] } {
   setString(KEY_WEEK_RESET, out.weekKey);
   if (out.didResetToday || out.didResetWeek) {
     saveTasks(out.tasks);
+    saveTodayTaskOrders(out.todayTaskOrders);
+    saveWeekTaskOrders(out.weekTaskOrders);
   }
-  return { cards, tasks: out.tasks };
+  return { cards, tasks: out.tasks, todayTaskOrders: out.todayTaskOrders, weekTaskOrders: out.weekTaskOrders };
+}
+
+function appendToOrderMap(
+  map: Record<string, string[]>,
+  cardId: string,
+  taskId: string,
+): Record<string, string[]> {
+  const existing = map[cardId] ?? [];
+  if (existing.includes(taskId)) return map;
+  return { ...map, [cardId]: [...existing, taskId] };
+}
+
+function removeFromOrderMap(
+  map: Record<string, string[]>,
+  taskId: string,
+): Record<string, string[]> {
+  const next: Record<string, string[]> = {};
+  for (const [cardId, ids] of Object.entries(map)) {
+    const filtered = ids.filter((id) => id !== taskId);
+    if (filtered.length > 0) next[cardId] = filtered;
+  }
+  return next;
+}
+
+function removeCardFromOrderMap(
+  map: Record<string, string[]>,
+  cardId: string,
+): Record<string, string[]> {
+  const next = { ...map };
+  delete next[cardId];
+  return next;
+}
+
+function migrateInOrderMap(
+  map: Record<string, string[]>,
+  taskId: string,
+  fromCardId: string,
+  toCardId: string,
+): Record<string, string[]> {
+  const fromList = (map[fromCardId] ?? []).filter((id) => id !== taskId);
+  const toList = [...(map[toCardId] ?? []), taskId];
+  return { ...map, [fromCardId]: fromList, [toCardId]: toList };
 }
 
 export const useStore = create<State>((set, get) => {
-  const { cards, tasks } = initialLoad();
+  const loaded = initialLoad();
 
   const after = () => persist(get);
 
   return {
-    cards,
-    tasks,
+    ...loaded,
     hideCompleted: false,
     sidePanelOpen: true,
     currentTab: 'board',
@@ -90,6 +146,8 @@ export const useStore = create<State>((set, get) => {
       set((s) => ({
         cards: s.cards.filter((c) => c.id !== id),
         tasks: s.tasks.filter((t) => t.cardId !== id),
+        todayTaskOrders: removeCardFromOrderMap(s.todayTaskOrders, id),
+        weekTaskOrders: removeCardFromOrderMap(s.weekTaskOrders, id),
       }));
       after();
     },
@@ -101,7 +159,6 @@ export const useStore = create<State>((set, get) => {
           const c = byId.get(id);
           if (c) next.push({ ...c, order: i });
         });
-        // append any not in orderedIds
         s.cards.forEach((c) => {
           if (!orderedIds.includes(c.id)) next.push({ ...c, order: next.length });
         });
@@ -138,7 +195,11 @@ export const useStore = create<State>((set, get) => {
       after();
     },
     deleteTask: (id) => {
-      set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) }));
+      set((s) => ({
+        tasks: s.tasks.filter((t) => t.id !== id),
+        todayTaskOrders: removeFromOrderMap(s.todayTaskOrders, id),
+        weekTaskOrders: removeFromOrderMap(s.weekTaskOrders, id),
+      }));
       after();
     },
     toggleTaskComplete: (id) => {
@@ -150,15 +211,31 @@ export const useStore = create<State>((set, get) => {
       after();
     },
     setTaskTodayFlag: (id, value) => {
-      set((s) => ({
-        tasks: s.tasks.map((t) => (t.id === id ? { ...t, todayFlag: value } : t)),
-      }));
+      set((s) => {
+        const task = s.tasks.find((t) => t.id === id);
+        if (!task) return s;
+        const todayTaskOrders = value
+          ? appendToOrderMap(s.todayTaskOrders, task.cardId, id)
+          : removeFromOrderMap(s.todayTaskOrders, id);
+        return {
+          tasks: s.tasks.map((t) => (t.id === id ? { ...t, todayFlag: value } : t)),
+          todayTaskOrders,
+        };
+      });
       after();
     },
     setTaskWeekFlag: (id, value) => {
-      set((s) => ({
-        tasks: s.tasks.map((t) => (t.id === id ? { ...t, weekFlag: value } : t)),
-      }));
+      set((s) => {
+        const task = s.tasks.find((t) => t.id === id);
+        if (!task) return s;
+        const weekTaskOrders = value
+          ? appendToOrderMap(s.weekTaskOrders, task.cardId, id)
+          : removeFromOrderMap(s.weekTaskOrders, id);
+        return {
+          tasks: s.tasks.map((t) => (t.id === id ? { ...t, weekFlag: value } : t)),
+          weekTaskOrders,
+        };
+      });
       after();
     },
     reorderTasks: (cardId, orderedIds) => {
@@ -176,6 +253,15 @@ export const useStore = create<State>((set, get) => {
       });
       after();
     },
+    reorderListTasks: (tab, cardId, orderedIds) => {
+      set((s) => {
+        if (tab === 'today') {
+          return { todayTaskOrders: { ...s.todayTaskOrders, [cardId]: orderedIds } };
+        }
+        return { weekTaskOrders: { ...s.weekTaskOrders, [cardId]: orderedIds } };
+      });
+      after();
+    },
     moveTaskBetweenCards: (taskId, toCardId, toIndex) => {
       set((s) => {
         const task = s.tasks.find((t) => t.id === taskId);
@@ -188,7 +274,17 @@ export const useStore = create<State>((set, get) => {
         destTasks.splice(toIndex, 0, moved);
         const others = remaining.filter((t) => t.cardId !== toCardId);
         const reindexed = destTasks.map((t, i) => ({ ...t, order: i }));
-        return { tasks: [...others, ...reindexed] };
+
+        let todayTaskOrders = s.todayTaskOrders;
+        let weekTaskOrders = s.weekTaskOrders;
+        if (task.todayFlag) {
+          todayTaskOrders = migrateInOrderMap(todayTaskOrders, taskId, task.cardId, toCardId);
+        }
+        if (task.weekFlag) {
+          weekTaskOrders = migrateInOrderMap(weekTaskOrders, taskId, task.cardId, toCardId);
+        }
+
+        return { tasks: [...others, ...reindexed], todayTaskOrders, weekTaskOrders };
       });
       after();
     },

@@ -21,6 +21,8 @@ describe('runFlagReset', () => {
     const now = new Date('2026-05-11T10:00:00Z');
     const out = runFlagReset({
       tasks: [makeTask()],
+      todayTaskOrders: {},
+      weekTaskOrders: {},
       lastTodayReset: '2026-05-10',
       lastWeekReset: weekKey(now),
       now,
@@ -35,6 +37,8 @@ describe('runFlagReset', () => {
     const now = new Date('2026-05-11T10:00:00Z');
     const out = runFlagReset({
       tasks: [makeTask()],
+      todayTaskOrders: {},
+      weekTaskOrders: {},
       lastTodayReset: todayKey(now),
       lastWeekReset: '2026-W17',
       now,
@@ -48,6 +52,8 @@ describe('runFlagReset', () => {
     const now = new Date('2026-05-11T10:00:00Z');
     const out = runFlagReset({
       tasks: [makeTask()],
+      todayTaskOrders: {},
+      weekTaskOrders: {},
       lastTodayReset: todayKey(now),
       lastWeekReset: weekKey(now),
       now,
@@ -62,6 +68,8 @@ describe('runFlagReset', () => {
     const now = new Date('2026-05-11T10:00:00Z');
     const out = runFlagReset({
       tasks: [makeTask()],
+      todayTaskOrders: {},
+      weekTaskOrders: {},
       lastTodayReset: null,
       lastWeekReset: null,
       now,
