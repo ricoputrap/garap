@@ -19,7 +19,7 @@ export function CardView({ card, tasks, activeTaskId }: Props) {
   const [draft, setDraft] = useState(card.title);
   const [newTask, setNewTask] = useState('');
   const [showPalette, setShowPalette] = useState(false);
-  const titleInputRef = useRef<HTMLInputElement>(null);
+  const titleInputRef = useRef<HTMLTextAreaElement>(null);
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: card.id, data: { type: 'card' } });
@@ -38,8 +38,18 @@ export function CardView({ card, tasks, activeTaskId }: Props) {
   };
 
   useEffect(() => {
-    if (editing) titleInputRef.current?.select();
+    if (editing && titleInputRef.current) {
+      const el = titleInputRef.current;
+      el.style.height = 'auto';
+      el.style.height = `${el.scrollHeight}px`;
+      el.select();
+    }
   }, [editing]);
+
+  function autoResize(el: HTMLTextAreaElement) {
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }
 
   const visibleTasks = (hideCompleted ? tasks.filter((t) => !t.completed) : tasks).sort(
     (a, b) => a.order - b.order,
@@ -75,24 +85,28 @@ export function CardView({ card, tasks, activeTaskId }: Props) {
           ⋮⋮
         </span>
         {editing ? (
-          <input
+          <textarea
             ref={titleInputRef}
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            rows={1}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              autoResize(e.target);
+            }}
             onBlur={commitTitle}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') commitTitle();
+              if (e.key === 'Enter') { e.preventDefault(); commitTitle(); }
               if (e.key === 'Escape') {
                 setDraft(card.title);
                 setEditing(false);
               }
             }}
-            className="flex-1 text-sm font-semibold text-stone-800 bg-transparent outline-none"
+            className="flex-1 text-sm font-semibold text-stone-800 bg-transparent outline-none resize-none overflow-hidden leading-snug"
             aria-label="Edit card title"
           />
         ) : (
           <h3
-            className="flex-1 text-sm font-semibold text-stone-800 truncate cursor-text"
+            className="flex-1 text-sm font-semibold text-stone-800 break-words line-clamp-3 cursor-text"
             onDoubleClick={() => {
               setDraft(card.title);
               setEditing(true);
