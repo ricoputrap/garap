@@ -66,12 +66,12 @@ export function TaskItem({ task, isDragging: isDraggingProp }: Props) {
       ref={setNodeRef}
       style={style}
       data-testid={`task-${task.id}`}
-      className="group flex items-center gap-2 px-2 py-1 rounded text-sm"
+      className="group flex items-start gap-2 px-2 py-1 rounded text-sm"
     >
       <span
         {...attributes}
         {...listeners}
-        className="cursor-grab text-stone-200 group-hover:text-stone-400 select-none"
+        className="cursor-grab text-stone-200 group-hover:text-stone-400 select-none mt-0.5"
         aria-label="Drag task"
       >
         ⋮⋮
@@ -81,7 +81,7 @@ export function TaskItem({ task, isDragging: isDraggingProp }: Props) {
         checked={task.completed}
         onChange={() => toggleTaskComplete(task.id)}
         aria-label={`Complete ${task.text}`}
-        className="accent-stone-700 shrink-0"
+        className="accent-stone-700 shrink-0 mt-0.5"
       />
       {editing ? (
         <input
@@ -90,7 +90,7 @@ export function TaskItem({ task, isDragging: isDraggingProp }: Props) {
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commitEdit}
           onKeyDown={onKeyDown}
-          className="flex-1 bg-transparent outline-none text-sm"
+          className="flex-1 min-w-0 bg-transparent outline-none text-sm"
           aria-label="Edit task"
         />
       ) : (
@@ -99,14 +99,14 @@ export function TaskItem({ task, isDragging: isDraggingProp }: Props) {
             setDraft(task.text);
             setEditing(true);
           }}
-          className={`flex-1 break-words cursor-text ${task.completed ? 'line-through text-stone-400' : 'text-stone-700'}`}
+          className={`flex-1 min-w-0 break-all cursor-text ${task.completed ? 'line-through text-stone-400' : 'text-stone-700'}`}
           title="Double-click to edit"
         >
           {task.text}
         </span>
       )}
 
-      <span className="flex items-center gap-1">
+      <span className="flex items-start gap-1 shrink-0">
         <button
           type="button"
           onClick={() => setTaskTodayFlag(task.id, !task.todayFlag)}
