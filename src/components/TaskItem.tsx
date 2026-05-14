@@ -7,10 +7,9 @@ import { useStore } from '../store';
 interface Props {
   task: Task;
   isDragging?: boolean;
-  accent?: string;
 }
 
-export function TaskItem({ task, isDragging: isDraggingProp, accent = '#dc6b53' }: Props) {
+export function TaskItem({ task, isDragging: isDraggingProp }: Props) {
   const { updateTask, deleteTask, toggleTaskComplete, setTaskTodayFlag, setTaskWeekFlag } =
     useStore();
 
@@ -67,36 +66,23 @@ export function TaskItem({ task, isDragging: isDraggingProp, accent = '#dc6b53' 
       ref={setNodeRef}
       style={style}
       data-testid={`task-${task.id}`}
-      className="group flex items-center gap-3 px-2 py-1 rounded text-sm"
+      className="group flex items-center gap-2 px-2 py-1 rounded text-sm"
     >
       <span
         {...attributes}
         {...listeners}
-        className="cursor-grab text-stone-200 group-hover:text-stone-400 select-none opacity-0 group-hover:opacity-100 transition-opacity -ml-1"
+        className="cursor-grab text-stone-200 group-hover:text-stone-400 select-none"
         aria-label="Drag task"
       >
         ⋮⋮
       </span>
-      <button
-        type="button"
-        role="checkbox"
-        aria-checked={task.completed}
-        onClick={() => toggleTaskComplete(task.id)}
+      <input
+        type="checkbox"
+        checked={task.completed}
+        onChange={() => toggleTaskComplete(task.id)}
         aria-label={`Complete ${task.text}`}
-        className="shrink-0 flex items-center justify-center rounded-full transition-colors"
-        style={{
-          width: 18,
-          height: 18,
-          background: task.completed ? accent : 'transparent',
-          border: task.completed ? `2px solid ${accent}` : '2px solid #d6d3d1',
-        }}
-      >
-        {task.completed && (
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-        )}
-      </button>
+        className="accent-stone-700 shrink-0"
+      />
       {editing ? (
         <input
           ref={inputRef}
@@ -113,7 +99,7 @@ export function TaskItem({ task, isDragging: isDraggingProp, accent = '#dc6b53' 
             setDraft(task.text);
             setEditing(true);
           }}
-          className={`flex-1 break-words cursor-text ${task.completed ? 'line-through text-stone-400' : 'text-stone-800'}`}
+          className={`flex-1 break-words cursor-text ${task.completed ? 'line-through text-stone-400' : 'text-stone-700'}`}
           title="Double-click to edit"
         >
           {task.text}
