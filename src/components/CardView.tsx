@@ -13,6 +13,8 @@ interface Props {
   activeTaskId?: string | number | null;
 }
 
+const DEFAULT_ACCENT = '#dc6b53';
+
 export function CardView({ card, tasks, activeTaskId }: Props) {
   const { updateCard, deleteCard, addTask, hideCompleted } = useStore();
   const [editing, setEditing] = useState(false);
@@ -20,6 +22,8 @@ export function CardView({ card, tasks, activeTaskId }: Props) {
   const [newTask, setNewTask] = useState('');
   const [showPalette, setShowPalette] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
+
+  const accent = card.color ?? DEFAULT_ACCENT;
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: card.id, data: { type: 'card' } });
@@ -33,8 +37,7 @@ export function CardView({ card, tasks, activeTaskId }: Props) {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-    borderTop: card.color ? `4px solid ${card.color}` : '4px solid transparent',
-    gridTemplateRows: 'auto auto 1fr auto',
+    gridTemplateRows: 'auto auto auto 1fr auto',
   };
 
   useEffect(() => {
@@ -44,6 +47,10 @@ export function CardView({ card, tasks, activeTaskId }: Props) {
   const visibleTasks = (hideCompleted ? tasks.filter((t) => !t.completed) : tasks).sort(
     (a, b) => a.order - b.order,
   );
+
+  const doneCount = tasks.filter((t) => t.completed).length;
+  const totalCount = tasks.length;
+  const progressPct = totalCount > 0 ? (doneCount / totalCount) * 100 : 0;
 
   function commitTitle() {
     const next = draft.trim();
@@ -63,13 +70,18 @@ export function CardView({ card, tasks, activeTaskId }: Props) {
     <div
       ref={setNodeRef}
       style={style}
-      className={`grid bg-white rounded-lg shadow-sm border border-stone-200 max-h-[350px] ${isOver ? 'ring-2 ring-stone-400' : ''}`}
+      className={`group/card relative grid bg-white rounded-xl shadow-sm border border-stone-200 max-h-[350px] overflow-hidden ${isOver ? 'ring-2 ring-stone-400' : ''}`}
     >
-      <div className="flex items-center gap-2 px-3 pt-2 pb-1">
+      <div
+        className="h-[3px] w-full"
+        style={{ background: accent }}
+      />
+
+      <div className="flex items-center gap-2 px-4 pt-3 pb-3">
         <span
           {...attributes}
           {...listeners}
-          className="cursor-grab text-stone-300 hover:text-stone-600 select-none"
+          className="cursor-grab text-stone-300 hover:text-stone-600 select-none opacity-0 group-hover/card:opacity-100 transition-opacity -ml-2"
           aria-label="Drag card"
         >
           ⋮⋮
@@ -87,12 +99,12 @@ export function CardView({ card, tasks, activeTaskId }: Props) {
                 setEditing(false);
               }
             }}
-            className="flex-1 text-sm font-semibold text-stone-800 bg-transparent outline-none"
+            className="flex-1 text-base font-bold text-stone-900 bg-transparent outline-none"
             aria-label="Edit card title"
           />
         ) : (
           <h3
-            className="flex-1 text-sm font-semibold text-stone-800 truncate cursor-text"
+            className="flex-1 text-base font-semibold text-stone-900 truncate cursor-text"
             onDoubleClick={() => {
               setDraft(card.title);
               setEditing(true);
@@ -102,10 +114,13 @@ export function CardView({ card, tasks, activeTaskId }: Props) {
             {card.title}
           </h3>
         )}
+        <span className="text-xs font-medium text-stone-600 bg-stone-100 px-2 py-0.5 rounded-md tabular-nums">
+          {doneCount}/{totalCount}
+        </span>
         <button
           type="button"
           onClick={() => setShowPalette((v) => !v)}
-          className="text-stone-400 hover:text-stone-700 text-base leading-none"
+          className="text-stone-400 hover:text-stone-700 text-base leading-none opacity-0 group-hover/card:opacity-100 transition-opacity"
           aria-label="Pick color"
           title="Color"
         >
@@ -116,7 +131,7 @@ export function CardView({ card, tasks, activeTaskId }: Props) {
           onClick={() => {
             if (confirm(`Delete card "${card.title}" and its tasks?`)) deleteCard(card.id);
           }}
-          className="text-stone-300 hover:text-red-500 text-xs"
+          className="text-stone-300 hover:text-red-500 text-xs opacity-0 group-hover/card:opacity-100 transition-opacity"
           aria-label="Delete card"
           title="Delete card"
         >
@@ -124,8 +139,17 @@ export function CardView({ card, tasks, activeTaskId }: Props) {
         </button>
       </div>
 
+      <div className="px-4 pb-2">
+        <div className="h-[3px] w-full bg-stone-200 rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full transition-[width] duration-300"
+            style={{ width: `${progressPct}%`, background: accent }}
+          />
+        </div>
+      </div>
+
       {showPalette && (
-        <div className="px-3 pb-2 flex gap-1.5">
+        <div className="px-4 pb-1 flex gap-1.5">
           <button
             type="button"
             onClick={() => {
@@ -167,14 +191,19 @@ export function CardView({ card, tasks, activeTaskId }: Props) {
         </div>
       )}
 
-      <div ref={setDropRef} className="px-2 py-1 min-h-[8px] overflow-y-auto">
+      <div ref={setDropRef} className="px-3 py-1 min-h-[8px] overflow-y-auto">
         <SortableContext
           items={visibleTasks.map((t) => t.id)}
           strategy={verticalListSortingStrategy}
         >
           <ul className="space-y-0.5">
             {visibleTasks.map((t) => (
-              <TaskItem key={t.id} task={t} isDragging={activeTaskId === t.id} />
+              <TaskItem
+                key={t.id}
+                task={t}
+                isDragging={activeTaskId === t.id}
+                accent={accent}
+              />
             ))}
           </ul>
         </SortableContext>
@@ -182,14 +211,14 @@ export function CardView({ card, tasks, activeTaskId }: Props) {
 
       <form
         onSubmit={submitTask}
-        className="flex items-center gap-2 px-3 py-2 border-t border-stone-100"
+        className="flex items-center gap-2 px-4 py-2"
       >
         <span className="text-stone-300 select-none">+</span>
         <input
           value={newTask}
           onChange={(e) => setNewTask(e.target.value)}
           placeholder="Add task"
-          className="flex-1 text-sm bg-transparent placeholder-stone-300 focus:outline-none"
+          className="flex-1 text-sm bg-transparent placeholder-stone-400 text-stone-600 focus:outline-none"
           aria-label={`Add task to ${card.title}`}
         />
       </form>
