@@ -5,12 +5,14 @@ type ListTab = 'today' | 'week';
 
 interface Props {
   tab: ListTab;
+  searchQuery?: string;
 }
 
-export function TaskListView({ tab }: Props) {
+export function TaskListView({ tab, searchQuery = '' }: Props) {
   const { cards, tasks, toggleTaskComplete } = useStore();
 
   const grouped = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
     const flagKey = tab === 'today' ? 'todayFlag' : 'weekFlag';
     const cardById = new Map(cards.map((c) => [c.id, c]));
     const groups = new Map<string, { card: { id: string; title: string; color?: string }; items: typeof tasks }>();
@@ -18,6 +20,7 @@ export function TaskListView({ tab }: Props) {
       if (!t[flagKey] || t.completed) continue;
       const card = cardById.get(t.cardId);
       if (!card) continue;
+      if (q && !card.title.toLowerCase().includes(q) && !t.text.toLowerCase().includes(q)) continue;
       if (!groups.has(card.id)) groups.set(card.id, { card, items: [] });
       groups.get(card.id)!.items.push(t);
     }
@@ -25,7 +28,7 @@ export function TaskListView({ tab }: Props) {
       (a, b) =>
         (cardById.get(a.card.id)?.order ?? 0) - (cardById.get(b.card.id)?.order ?? 0),
     );
-  }, [tab, tasks, cards]);
+  }, [tab, tasks, cards, searchQuery]);
 
   if (grouped.length === 0) {
     return (

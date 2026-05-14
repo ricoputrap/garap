@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Board } from './components/Board';
 import { SidePanel } from './components/SidePanel';
 import { BottomNavbar } from './components/BottomNavbar';
@@ -10,6 +11,7 @@ export default function App() {
   const toggleHideCompleted = useStore((s) => s.toggleHideCompleted);
   const addCard = useStore((s) => s.addCard);
   const currentTab = useStore((s) => s.currentTab);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const dateLabel = new Date().toLocaleDateString(undefined, {
     weekday: 'short',
@@ -19,46 +21,59 @@ export default function App() {
 
   return (
     <div className="h-full flex flex-col">
-      <header className="flex items-center gap-3 px-6 py-3 border-b border-stone-200 bg-white shrink-0">
-        <h1 className="text-lg font-semibold text-stone-900">Garap</h1>
-        <span className="text-xs text-stone-400">{dateLabel}</span>
+      <header className="flex items-center gap-3 px-4 py-2.5 border-b border-stone-200 bg-white shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="w-7 h-7 rounded bg-stone-900 text-white text-xs font-bold flex items-center justify-center select-none">
+            G
+          </div>
+          <span className="font-semibold text-stone-900 text-sm">Garap</span>
+          <span className="text-stone-300">·</span>
+          <span className="text-xs text-stone-400">{dateLabel}</span>
+        </div>
         <div className="flex-1" />
-        <label className="hidden md:flex items-center gap-2 text-sm text-stone-600 select-none cursor-pointer">
+        <div className="flex items-center gap-2">
           <input
-            type="checkbox"
-            checked={hideCompleted}
-            onChange={toggleHideCompleted}
-            className="accent-stone-700"
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search..."
+            className="text-sm border border-stone-200 rounded px-2 py-1 focus:outline-none focus:border-stone-400 w-28 sm:w-40 md:w-48"
           />
-          Hide completed
-        </label>
-        <InstallButton />
-        <button
-          type="button"
-          onClick={() => addCard('New card')}
-          className="hidden md:block text-sm bg-stone-900 text-white px-3 py-1.5 rounded hover:bg-stone-700"
-        >
-          + New card
-        </button>
+          <button
+            type="button"
+            onClick={toggleHideCompleted}
+            className={`text-sm px-2.5 py-1 rounded border whitespace-nowrap ${
+              hideCompleted
+                ? 'bg-stone-900 text-white border-stone-900'
+                : 'border-stone-200 text-stone-600 hover:border-stone-400'
+            }`}
+          >
+            Hide completed
+          </button>
+          <InstallButton />
+          <button
+            type="button"
+            onClick={() => addCard('New list')}
+            className="text-sm bg-stone-900 text-white px-3 py-1.5 rounded hover:bg-stone-700 whitespace-nowrap"
+          >
+            + New list
+          </button>
+        </div>
       </header>
 
       <div className="flex-1 flex min-h-0 overflow-hidden">
-        {/* Board: always visible on desktop, visible on mobile only when board tab active */}
         <div className={`flex-1 flex flex-col min-h-0 overflow-hidden ${currentTab !== 'board' ? 'hidden md:flex' : 'flex'}`}>
-          <Board />
+          <Board searchQuery={searchQuery} />
         </div>
 
-        {/* Mobile Today view */}
         <div className={`flex-1 overflow-y-auto p-4 pb-20 md:hidden ${currentTab === 'today' ? 'block' : 'hidden'}`}>
-          <TaskListView tab="today" />
+          <TaskListView tab="today" searchQuery={searchQuery} />
         </div>
 
-        {/* Mobile Week view */}
         <div className={`flex-1 overflow-y-auto p-4 pb-20 md:hidden ${currentTab === 'week' ? 'block' : 'hidden'}`}>
-          <TaskListView tab="week" />
+          <TaskListView tab="week" searchQuery={searchQuery} />
         </div>
 
-        {/* Desktop SidePanel only */}
         <div className="hidden md:block">
           <SidePanel />
         </div>

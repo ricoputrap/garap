@@ -12,7 +12,11 @@ import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable';
 import { useStore } from '../store';
 import { CardView } from './CardView';
 
-export function Board() {
+interface Props {
+  searchQuery?: string;
+}
+
+export function Board({ searchQuery = '' }: Props) {
   const { cards, tasks, reorderCards, reorderTasks, moveTaskBetweenCards } = useStore();
   const [activeType, setActiveType] = useState<'card' | 'task' | null>(null);
   const [activeId, setActiveId] = useState<string | number | null>(null);
@@ -29,6 +33,20 @@ export function Board() {
     }
     return map;
   }, [cards, tasks]);
+
+  const visibleCards = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return sortedCards.map((c) => ({ card: c, cardTasks: tasksByCard.get(c.id) ?? [] }));
+    return sortedCards.flatMap((c) => {
+      const allTasks = tasksByCard.get(c.id) ?? [];
+      if (c.title.toLowerCase().includes(q)) {
+        return [{ card: c, cardTasks: allTasks }];
+      }
+      const matching = allTasks.filter((t) => t.text.toLowerCase().includes(q));
+      if (matching.length > 0) return [{ card: c, cardTasks: matching }];
+      return [];
+    });
+  }, [searchQuery, sortedCards, tasksByCard]);
 
   function onDragStart(e: DragStartEvent) {
     const type = (e.active.data.current as { type?: string } | undefined)?.type;
@@ -101,14 +119,19 @@ export function Board() {
             className="grid gap-4 items-start"
             style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}
           >
-            {sortedCards.map((c) => (
-              <CardView key={c.id} card={c} tasks={tasksByCard.get(c.id) ?? []} activeTaskId={activeId} />
+            {visibleCards.map(({ card, cardTasks }) => (
+              <CardView key={card.id} card={card} tasks={cardTasks} activeTaskId={activeId} />
             ))}
           </div>
         </SortableContext>
         {sortedCards.length === 0 && (
           <p className="text-center text-stone-400 mt-20 text-sm">
-            No cards yet. Click <b>+ New card</b> to start.
+            No lists yet. Click <b>+ New list</b> to start.
+          </p>
+        )}
+        {sortedCards.length > 0 && visibleCards.length === 0 && (
+          <p className="text-center text-stone-400 mt-20 text-sm">
+            No results for &ldquo;{searchQuery}&rdquo;.
           </p>
         )}
       </div>
