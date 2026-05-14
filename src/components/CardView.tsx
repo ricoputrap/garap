@@ -101,12 +101,12 @@ export function CardView({ card, tasks, activeTaskId }: Props) {
                 setEditing(false);
               }
             }}
-            className="flex-1 text-sm font-semibold text-stone-800 bg-transparent outline-none resize-none overflow-hidden leading-snug"
+            className="flex-1 min-w-0 text-sm font-semibold text-stone-800 bg-transparent outline-none resize-none overflow-hidden leading-snug break-all"
             aria-label="Edit card title"
           />
         ) : (
           <h3
-            className="flex-1 text-sm font-semibold text-stone-800 break-words line-clamp-3 cursor-text"
+            className="flex-1 min-w-0 text-sm font-semibold text-stone-800 break-all line-clamp-3 cursor-text"
             onDoubleClick={() => {
               setDraft(card.title);
               setEditing(true);
