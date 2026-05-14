@@ -1,5 +1,8 @@
 import { useMemo } from 'react';
+import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useStore } from '../store';
+import { TaskListItem } from './TaskListItem';
 
 type ListTab = 'today' | 'week';
 
@@ -9,7 +12,7 @@ interface Props {
 }
 
 export function TaskListView({ tab, searchQuery = '' }: Props) {
-  const { cards, tasks, toggleTaskComplete } = useStore();
+  const { cards, tasks, reorderTasks } = useStore();
 
   const grouped = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
@@ -43,35 +46,50 @@ export function TaskListView({ tab, searchQuery = '' }: Props) {
 
   return (
     <div className="space-y-4 text-sm">
-      {grouped.map(({ card, items }) => (
-        <div key={card.id}>
-          <div className="flex items-center gap-2 mb-1">
-            <span
-              className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
-              style={{ background: card.color ?? '#d6d3d1' }}
-            />
-            <h4 className="font-semibold text-stone-700 text-xs uppercase tracking-wide">
-              {card.title}
-            </h4>
+      {grouped.map(({ card, items }) => {
+        const incomplete = items.filter((t) => !t.completed);
+        const completed = items.filter((t) => t.completed);
+
+        function handleDragEnd(event: DragEndEvent) {
+          const { active, over } = event;
+          if (!over || active.id === over.id) return;
+          const oldOrder = incomplete.map((t) => t.id);
+          const oldIdx = oldOrder.indexOf(active.id as string);
+          const newIdx = oldOrder.indexOf(over.id as string);
+          if (oldIdx === -1 || newIdx === -1) return;
+          const next = [...oldOrder];
+          next.splice(oldIdx, 1);
+          next.splice(newIdx, 0, active.id as string);
+          // completed tasks keep their positions after incomplete ones
+          reorderTasks(card.id, [...next, ...completed.map((t) => t.id)]);
+        }
+
+        return (
+          <div key={card.id}>
+            <div className="flex items-center gap-2 mb-1">
+              <span
+                className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                style={{ background: card.color ?? '#d6d3d1' }}
+              />
+              <h4 className="font-semibold text-stone-700 text-xs uppercase tracking-wide">
+                {card.title}
+              </h4>
+            </div>
+            <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={incomplete.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+                <ul className="space-y-1 ml-4">
+                  {incomplete.map((t) => (
+                    <TaskListItem key={t.id} task={t} tab={tab} />
+                  ))}
+                  {completed.map((t) => (
+                    <TaskListItem key={t.id} task={t} tab={tab} disabled />
+                  ))}
+                </ul>
+              </SortableContext>
+            </DndContext>
           </div>
-          <ul className="space-y-1 ml-4">
-            {items.map((t) => (
-              <li key={t.id} className="flex items-start gap-2 text-stone-700">
-                <input
-                  type="checkbox"
-                  checked={t.completed}
-                  onChange={() => toggleTaskComplete(t.id)}
-                  className="mt-0.5 accent-stone-700 shrink-0"
-                  aria-label={`Complete ${t.text}`}
-                />
-                <span className={t.completed ? 'line-through text-stone-400' : ''}>
-                  {t.text}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
