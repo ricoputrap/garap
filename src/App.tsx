@@ -26,9 +26,10 @@ export default function App() {
           <div className="w-7 h-7 rounded bg-stone-900 text-white text-xs font-bold flex items-center justify-center select-none">
             G
           </div>
-          <span className="font-semibold text-stone-900 text-sm">Garap</span>
-          <span className="text-stone-300">·</span>
-          <span className="text-xs text-stone-400">{dateLabel}</span>
+          <div className="flex flex-col">
+            <span className="font-semibold text-stone-900 text-sm">Garap</span>
+            <span className="text-xs text-stone-400">{dateLabel}</span>
+          </div>
         </div>
         <div className="flex-1" />
         <div className="flex items-center gap-2">
