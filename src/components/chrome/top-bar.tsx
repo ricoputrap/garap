@@ -75,13 +75,16 @@ export const TopBar = () => {
 const Mark = () => (
   <svg viewBox="0 0 36 36" className="h-9 w-9" aria-hidden="true">
     <rect x="1" y="1" width="34" height="34" rx="9" fill="var(--bg-2)" stroke="var(--rule)" />
-    <path
-      d="M9 12 L9 26 M9 12 L19 12 M9 19 L17 19"
-      stroke="var(--fg)"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-      fill="none"
-    />
-    <circle cx="25" cy="24" r="3.2" fill="var(--accent)" />
+    <text
+      x="11"
+      y="26"
+      fontFamily="var(--font-display, ui-serif, Georgia, serif)"
+      fontSize="20"
+      fontWeight="500"
+      fill="var(--fg)"
+    >
+      G
+    </text>
+    <circle cx="27" cy="25" r="3.2" fill="var(--accent)" />
   </svg>
 )
