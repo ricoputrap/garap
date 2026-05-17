@@ -249,4 +249,4 @@ Sentry is the sole telemetry channel. Errors only — no usage analytics, no per
 - Auto-clear is the only "magical" behavior; everything else is explicit user action. Treat the date-math in `auto-clear` as the highest-bug-risk surface.
 - shadcn/ui components are copy-pasted (not a runtime dependency); pick only the components actually used (Dialog, Tabs, Tooltip, Button at minimum).
 - TanStack Router file-based routing is sufficient — no need for code-based route definitions.
-- Keep dependencies minimal: React, TanStack Router, Dexie, dexie-react-hooks, Tailwind, shadcn primitives, Vitest, RTL, Playwright. No Zustand, no Redux, no date library (use `Intl` and native `Date` for the local-time boundary math; if it becomes painful, reach for `date-fns`).
+- Keep dependencies minimal: React, TanStack Router, Dexie, dexie-react-hooks, Tailwind, shadcn primitives, zod (import-export shape guard), Vitest, RTL, Playwright. No Zustand, no Redux, no date library (use `Intl` and native `Date` for the local-time boundary math; if it becomes painful, reach for `date-fns`).
