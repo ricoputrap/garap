@@ -7,6 +7,7 @@ import {
 } from '@/services/db'
 import { addToToday, addToWeek } from '@/services/list-refs'
 import { setCompleted } from '@/services/completion-sync'
+import { snapshotAndClearToday } from '@/services/history'
 import {
   ImportError,
   exportToJson,
@@ -32,6 +33,8 @@ const snapshotCounts = async () => ({
   items: await db.items.count(),
   todayRefs: await db.todayRefs.count(),
   weekRefs: await db.weekRefs.count(),
+  todayHistory: await db.todayHistory.count(),
+  weekHistory: await db.weekHistory.count(),
 })
 
 describe('import-export round trip', () => {
@@ -48,6 +51,8 @@ describe('import-export round trip', () => {
       db.items.clear(),
       db.todayRefs.clear(),
       db.weekRefs.clear(),
+      db.todayHistory.clear(),
+      db.weekHistory.clear(),
     ])
     await importFromJson(json)
 
@@ -85,5 +90,32 @@ describe('import-export round trip', () => {
     await expect(importFromJson(JSON.stringify({ hello: 'world' }))).rejects.toBeInstanceOf(
       ImportError,
     )
+  })
+
+  it('round-trips history rows', async () => {
+    await seed()
+    const all = await db.items.toArray()
+    const done = all.find((i) => i.completed)
+    if (done) {
+      await addToToday(done.id)
+      await snapshotAndClearToday(Date.now())
+    }
+    const historyBefore = await db.todayHistory.toArray()
+    expect(historyBefore.length).toBeGreaterThan(0)
+
+    const json = await exportToJson()
+    await Promise.all([
+      db.boards.clear(),
+      db.cards.clear(),
+      db.items.clear(),
+      db.todayRefs.clear(),
+      db.weekRefs.clear(),
+      db.todayHistory.clear(),
+      db.weekHistory.clear(),
+    ])
+    await importFromJson(json)
+
+    const historyAfter = await db.todayHistory.toArray()
+    expect(historyAfter).toEqual(historyBefore)
   })
 })
