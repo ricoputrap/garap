@@ -1,5 +1,13 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Board, Card, Item, TodayRef, WeekRef } from '@/types/domain'
+import type {
+  Board,
+  Card,
+  Item,
+  TodayHistory,
+  TodayRef,
+  WeekHistory,
+  WeekRef,
+} from '@/types/domain'
 
 export class GarapDB extends Dexie {
   boards!: EntityTable<Board, 'id'>
@@ -7,6 +15,8 @@ export class GarapDB extends Dexie {
   items!: EntityTable<Item, 'id'>
   todayRefs!: EntityTable<TodayRef, 'itemId'>
   weekRefs!: EntityTable<WeekRef, 'itemId'>
+  todayHistory!: EntityTable<TodayHistory, 'date'>
+  weekHistory!: EntityTable<WeekHistory, 'weekStart'>
 
   constructor() {
     super('garap')
@@ -16,6 +26,10 @@ export class GarapDB extends Dexie {
       items: 'id, cardId, completed, createdAt, completedAt',
       todayRefs: 'itemId, addedAt',
       weekRefs: 'itemId, addedAt',
+    })
+    this.version(2).stores({
+      todayHistory: 'date, clearedAt',
+      weekHistory: 'weekStart, clearedAt',
     })
   }
 }

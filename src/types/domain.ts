@@ -33,3 +33,25 @@ export interface WeekRef {
 }
 
 export type PanelTab = 'today' | 'week'
+
+export interface HistoryItem {
+  itemId: ID
+  name: string
+  cardId: ID
+  cardTitle: string
+  boardId: ID
+  boardName: string
+  completedAt: number
+}
+
+export interface TodayHistory {
+  date: string
+  clearedAt: number
+  items: HistoryItem[]
+}
+
+export interface WeekHistory {
+  weekStart: string
+  clearedAt: number
+  items: HistoryItem[]
+}

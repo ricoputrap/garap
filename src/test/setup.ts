@@ -10,6 +10,8 @@ afterEach(async () => {
     db.items.clear(),
     db.todayRefs.clear(),
     db.weekRefs.clear(),
+    db.todayHistory.clear(),
+    db.weekHistory.clear(),
   ])
   localStorage.clear()
 })

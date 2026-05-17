@@ -27,7 +27,15 @@ export const importFromJson = async (raw: string): Promise<void> => {
   const snapshot = parse(raw)
   await db.transaction(
     'rw',
-    [db.boards, db.cards, db.items, db.todayRefs, db.weekRefs],
+    [
+      db.boards,
+      db.cards,
+      db.items,
+      db.todayRefs,
+      db.weekRefs,
+      db.todayHistory,
+      db.weekHistory,
+    ],
     async () => {
       await Promise.all([
         db.boards.clear(),
@@ -35,6 +43,8 @@ export const importFromJson = async (raw: string): Promise<void> => {
         db.items.clear(),
         db.todayRefs.clear(),
         db.weekRefs.clear(),
+        db.todayHistory.clear(),
+        db.weekHistory.clear(),
       ])
       await Promise.all([
         db.boards.bulkAdd(snapshot.boards),
@@ -42,6 +52,8 @@ export const importFromJson = async (raw: string): Promise<void> => {
         db.items.bulkAdd(snapshot.items),
         db.todayRefs.bulkAdd(snapshot.todayRefs),
         db.weekRefs.bulkAdd(snapshot.weekRefs),
+        db.todayHistory.bulkAdd(snapshot.todayHistory),
+        db.weekHistory.bulkAdd(snapshot.weekHistory),
       ])
     },
   )

@@ -24,7 +24,7 @@ export const startAutoClear = (): (() => void) => {
       week: shouldClearWeek(lastWeek, now),
     }
     if (need.today || need.week) {
-      await runCleanup(need)
+      await runCleanup(need, now)
       if (need.today) settings.setLastClearedToday(now)
       if (need.week) settings.setLastClearedWeek(now)
     }

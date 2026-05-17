@@ -2,21 +2,26 @@ import { db } from '@/services/db/schema'
 import type { Snapshot } from './schema'
 
 export const exportSnapshot = async (): Promise<Snapshot> => {
-  const [boards, cards, items, todayRefs, weekRefs] = await Promise.all([
-    db.boards.toArray(),
-    db.cards.toArray(),
-    db.items.toArray(),
-    db.todayRefs.toArray(),
-    db.weekRefs.toArray(),
-  ])
+  const [boards, cards, items, todayRefs, weekRefs, todayHistory, weekHistory] =
+    await Promise.all([
+      db.boards.toArray(),
+      db.cards.toArray(),
+      db.items.toArray(),
+      db.todayRefs.toArray(),
+      db.weekRefs.toArray(),
+      db.todayHistory.toArray(),
+      db.weekHistory.toArray(),
+    ])
   return {
-    version: 1,
+    version: 2,
     exportedAt: Date.now(),
     boards,
     cards,
     items,
     todayRefs,
     weekRefs,
+    todayHistory,
+    weekHistory,
   }
 }
 
