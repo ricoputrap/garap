@@ -79,9 +79,9 @@ A single-user, browser-based web app that mirrors the paper workflow. The screen
 - Testing: Vitest + React Testing Library + Playwright (E2E)
 - Deploy: Netlify (static SPA, auto-deploy on push)
 
-### Modules
+### Services
 
-Five deep modules with simple, stable interfaces, all testable in isolation:
+Five deep services with simple, stable interfaces, all testable in isolation:
 
 1. **`db`** — Dexie schema definition + CRUD operations with cascade delete (deleting a board cascades to its cards, items, and Today/Week refs; deleting a card cascades to its items and refs; deleting an item cascades to its refs).
 
@@ -158,11 +158,11 @@ WeekRef  { itemId, addedAt }
 
 ## Testing Decisions
 
-A good test verifies **external behavior** of a module — its public interface — and remains stable when the implementation changes. Tests should not assert on internal state, private helpers, or component DOM structure beyond what users perceive.
+A good test verifies **external behavior** of a service — its public interface — and remains stable when the implementation changes. Tests should not assert on internal state, private helpers, or component DOM structure beyond what users perceive.
 
 ### Unit / Integration Tests (Vitest + RTL)
 
-All five deep modules are tested:
+All five deep services are tested:
 
 1. **`db`** — cascade correctness:
    - Deleting a board removes all its cards, items, and Today/Week refs.

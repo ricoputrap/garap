@@ -11,7 +11,7 @@ Garap - A web-app for managing multiple tasks with multiple categories and board
 ### What counts as architectural
 
 - Adding/removing/replacing a library or framework (e.g. swap Dexie, add Zustand, drop TanStack Router).
-- Changing module boundaries (`src/modules/*`) — splitting, merging, renaming, adding new module.
+- Changing service boundaries (`src/services/*`) — splitting, merging, renaming, adding new service.
 - Changing the data model (`Board`, `Card`, `Item`, `TodayRef`, `WeekRef` shapes; new stores).
 - Changing persistence strategy (IndexedDB → File System API, adding sync, adding backend).
 - Changing layer rules / dependency direction.
@@ -25,7 +25,7 @@ Garap - A web-app for managing multiple tasks with multiple categories and board
 - Bug fixes, refactors that preserve interfaces.
 - Styling, copy changes.
 - Adding tests within established conventions.
-- Adding a new function inside an existing module.
+- Adding a new function inside an existing service.
 
 ### How to write an ADR
 
@@ -97,7 +97,7 @@ garap/
 │   │       ├── tabs.tsx
 │   │       └── tooltip.tsx
 │   │
-│   ├── modules/                      # business logic — full test coverage
+│   ├── services/                     # business logic — full test coverage
 │   │   ├── db/
 │   │   │   ├── schema.ts
 │   │   │   ├── boards.ts
@@ -185,19 +185,19 @@ garap/
 
 ### Layer rules
 
-- `routes/` → import `hooks/` + `components/`. Never `modules/` directly.
-- `components/` → import other components + `hooks/`. Never Dexie, never `modules/db`.
-- `hooks/` → import `modules/*`. Wrap `useLiveQuery` + module ops.
-- `modules/` → import other `modules/` only when needed. Never import React.
+- `routes/` → import `hooks/` + `components/`. Never `services/` directly.
+- `components/` → import other components + `hooks/`. Never Dexie, never `services/db`.
+- `hooks/` → import `services/*`. Wrap `useLiveQuery` + service ops.
+- `services/` → import other `services/` only when needed. Never import React.
 - `lib/` → leaf utils. No app imports.
 
-Dependency direction: `routes → components → hooks → modules → lib` (one-way).
+Dependency direction: `routes → components → hooks → services → lib` (one-way).
 
 ### Test placement
 
 | Location | Tool | Why |
 |----------|------|-----|
-| `src/modules/*/__tests__/` | Vitest | Business logic — full coverage |
+| `src/services/*/__tests__/` | Vitest | Business logic — full coverage |
 | `src/lib/__tests__/date.test.ts` | Vitest | Date math bug-prone |
 | `e2e/` | Playwright | Golden paths |
 | `components/`, `hooks/`, `routes/` | — | No logic → no tests |
@@ -227,7 +227,7 @@ Format: `<type>(<scope>)?: <subject>`
 
 **Rules:**
 - Subject ≤50 chars, imperative mood ("add", not "added"/"adds"), lowercase, no trailing period.
-- Scope optional, matches module/area (`feat(auto-clear): ...`, `fix(db): ...`).
+- Scope optional, matches service/area (`feat(auto-clear): ...`, `fix(db): ...`).
 - Body only when "why" not obvious from subject. Wrap at 72 chars.
 - Breaking change: `feat!: ...` or footer `BREAKING CHANGE: ...`.
 
