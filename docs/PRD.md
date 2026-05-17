@@ -225,8 +225,22 @@ None — greenfield repo. Tests will set the convention.
 - Search and filter.
 - Notifications, calendar sync, PWA install, offline-first beyond what IndexedDB already provides.
 - Undo, Trash, soft delete, activity log.
-- Internationalization, analytics, telemetry.
+- Internationalization, usage analytics.
 - Sample data, onboarding tour, demo content.
+
+## Error Reporting (Sentry)
+
+Sentry is the sole telemetry channel. Errors only — no usage analytics, no performance traces, no session replay.
+
+- **Scope:** unhandled exceptions + `console.error`/`console.warn` (via `captureConsoleIntegration`).
+- **Environments:** production builds only. Dev and test never initialize Sentry.
+- **Plan:** Sentry Free Developer tier (5K errors/mo). Single-user app won't approach quota.
+- **PII posture:** strict.
+  - `sendDefaultPii: false`.
+  - `tracesSampleRate: 0`, `replaysSessionSampleRate: 0`, `replaysOnErrorSampleRate: 0`.
+  - `beforeSend` hook redacts breadcrumb `message` fields (task and board names are user content and must not leave the device in clear text).
+- **DSN:** injected via `VITE_SENTRY_DSN` env var on Netlify. Never committed.
+- **Compliance impact:** none. No PII collected; scrubbing keeps task/board text out of events.
 
 ## Further Notes
 
