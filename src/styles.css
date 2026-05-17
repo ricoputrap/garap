@@ -1,0 +1,154 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Editorial paper palette */
+  --color-paper: #fbf7ee;
+  --color-paper-2: #f5efe1;
+  --color-paper-3: #ece4d0;
+  --color-ink: #1b1612;
+  --color-ink-2: #3b332a;
+  --color-ink-3: #6b6055;
+  --color-rule: #d9cfba;
+
+  /* Accent — burnt amber, paper-aged */
+  --color-accent: #c2410c;
+  --color-accent-2: #9a3412;
+  --color-accent-soft: #fed7aa;
+
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --bg: var(--color-paper);
+    --bg-2: var(--color-paper-2);
+    --bg-3: var(--color-paper-3);
+    --fg: var(--color-ink);
+    --fg-2: var(--color-ink-2);
+    --fg-3: var(--color-ink-3);
+    --rule: var(--color-rule);
+    --accent: var(--color-accent);
+    --accent-2: var(--color-accent-2);
+    --accent-soft: var(--color-accent-soft);
+    --shadow-paper: 0 1px 0 rgba(27, 22, 18, 0.04),
+      0 8px 24px -16px rgba(27, 22, 18, 0.18);
+  }
+
+  .dark {
+    color-scheme: dark;
+    --bg: #14110d;
+    --bg-2: #1c1814;
+    --bg-3: #26201a;
+    --fg: #f4ecdc;
+    --fg-2: #d6cbb6;
+    --fg-3: #948a78;
+    --rule: #332b22;
+    --accent: #f59e0b;
+    --accent-2: #fbbf24;
+    --accent-soft: #3a2a13;
+    --shadow-paper: 0 1px 0 rgba(0, 0, 0, 0.4),
+      0 12px 32px -16px rgba(0, 0, 0, 0.65);
+  }
+
+  html, body, #root {
+    height: 100%;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    background-image:
+      radial-gradient(1200px 600px at 90% -10%, color-mix(in oklab, var(--accent) 8%, transparent), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, color-mix(in oklab, var(--accent) 6%, transparent), transparent 60%);
+    background-attachment: fixed;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.5;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.10  0 0 0 0 0.08  0 0 0 0 0.06  0 0 0 0.07 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+
+  .dark body::before {
+    opacity: 0.35;
+    mix-blend-mode: screen;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--accent) 35%, transparent);
+    color: var(--fg);
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+}
+
+@utility smallcaps {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.7rem;
+}
+
+@utility rule-line {
+  background-image: linear-gradient(to right, var(--rule), var(--rule));
+  background-size: 100% 1px;
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+}
+
+@utility scrollbar-paper {
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule) transparent;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--fg) 4%, transparent) 0%,
+    color-mix(in oklab, var(--fg) 9%, transparent) 50%,
+    color-mix(in oklab, var(--fg) 4%, transparent) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+.dialog-overlay {
+  background: color-mix(in oklab, var(--bg) 60%, transparent);
+  backdrop-filter: blur(6px);
+}
