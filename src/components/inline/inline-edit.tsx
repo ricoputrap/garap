@@ -32,6 +32,10 @@ export const InlineEdit = ({
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
+    if (autoEdit) setEditing(true)
+  }, [autoEdit])
+
+  useEffect(() => {
     if (!editing) setDraft(value)
   }, [value, editing])
 
