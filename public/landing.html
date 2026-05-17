@@ -1,0 +1,1396 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Garap — paper to-do lists, digitized.</title>
+<meta name="description" content="I had too many lists on paper. So I built Garap: a single-screen, local-first task manager that mirrors a paper workflow." />
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&display=swap" rel="stylesheet">
+
+<style>
+  /* ============ TOKENS ============ */
+  :root{
+    --paper:        #F4ECD8;
+    --paper-2:      #EFE5C7;   /* card paper, slightly older */
+    --paper-edge:   #E8DDC0;
+    --rule:         rgba(26,26,26,.10);
+    --rule-strong:  rgba(26,26,26,.22);
+    --ink:          #1A1A1A;
+    --ink-soft:     #3D3D3D;
+    --ink-faded:    #6b6457;
+    --red:          #D1495B;     /* red marker */
+    --red-soft:     rgba(209,73,91,.18);
+    --green:        #2C5F2D;     /* green marker */
+    --green-soft:   rgba(44,95,45,.18);
+    --highlight:    #F2D98D;     /* highlighter yellow, used sparingly */
+    --shadow:       0 1px 0 rgba(0,0,0,.05), 0 18px 30px -22px rgba(26,26,26,.35);
+    --shadow-soft:  0 1px 0 rgba(0,0,0,.04), 0 8px 18px -14px rgba(26,26,26,.3);
+
+    --serif:  "Fraunces", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    --hand:   "Caveat", "Bradley Hand", cursive;
+
+    --maxw: 1180px;
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  html{ scroll-behavior:smooth; }
+  body{
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-optical-sizing: auto;
+    font-size: 18px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+
+  /* paper texture overlay: subtle SVG noise + faint ruled lines */
+  body::before{
+    content:"";
+    position: fixed; inset:0;
+    pointer-events:none;
+    z-index: 0;
+    background-image:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.06 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    mix-blend-mode: multiply;
+    opacity:.55;
+  }
+  body::after{
+    content:"";
+    position: fixed; inset:0;
+    pointer-events:none;
+    z-index: 0;
+    background: radial-gradient(120% 70% at 50% 0%, rgba(255,247,224,.6), transparent 60%),
+                radial-gradient(80% 60% at 100% 100%, rgba(180,150,90,.10), transparent 60%);
+  }
+
+  main, header, footer, section{ position:relative; z-index:1; }
+
+  /* ============ LAYOUT ============ */
+  .wrap{
+    max-width: var(--maxw);
+    margin: 0 auto;
+    padding: 0 28px;
+  }
+
+  /* ============ TOP NAV ============ */
+  .nav{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 22px 0 10px;
+    border-bottom: 1px dashed var(--rule-strong);
+  }
+  .brand{
+    display:flex; align-items:baseline; gap:10px;
+  }
+  .brand-mark{
+    font-family: var(--hand);
+    font-size: 36px;
+    line-height: 1;
+    color: var(--ink);
+    letter-spacing:.5px;
+  }
+  .brand-mark .dot{ color: var(--red); }
+  .brand-sub{
+    font-family: var(--serif);
+    font-style: italic;
+    color: var(--ink-faded);
+    font-size: 14px;
+  }
+  .nav-links{
+    display:flex; gap:22px;
+    font-family: var(--serif);
+    font-size: 14px;
+    letter-spacing:.04em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .nav-links a{
+    color: inherit; text-decoration:none;
+    border-bottom: 1px solid transparent;
+    padding-bottom:2px;
+    transition: border-color .2s, color .2s;
+  }
+  .nav-links a:hover{ color: var(--ink); border-color: var(--ink); }
+  @media (max-width: 640px){
+    .nav-links{ display:none; }
+  }
+
+  /* ============ HERO ============ */
+  .hero{
+    padding: 64px 0 48px;
+    display: grid;
+    grid-template-columns: 1.05fr .95fr;
+    gap: 56px;
+    align-items: end;
+  }
+  @media (max-width: 900px){
+    .hero{ grid-template-columns: 1fr; gap: 36px; padding-top: 36px;}
+  }
+
+  .hero-eyebrow{
+    font-family: var(--hand);
+    font-size: 26px;
+    color: var(--red);
+    transform: rotate(-2deg);
+    display:inline-block;
+    margin-bottom: 4px;
+  }
+  .hero h1{
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: clamp(44px, 6.4vw, 86px);
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    margin: 6px 0 20px;
+    color: var(--ink);
+  }
+  .hero h1 em{
+    font-style: italic;
+    font-weight: 500;
+    position: relative;
+    white-space: nowrap;
+  }
+  .hero h1 em::after{
+    /* hand underline */
+    content:"";
+    position:absolute; left:-4px; right:-4px; bottom:-6px; height: 10px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 220 12' preserveAspectRatio='none'><path d='M2 7 C 40 2, 80 11, 120 5 S 200 9, 218 4' fill='none' stroke='%23D1495B' stroke-width='3' stroke-linecap='round'/></svg>");
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+  }
+  .hero p.lede{
+    font-size: 20px;
+    line-height: 1.55;
+    color: var(--ink-soft);
+    max-width: 540px;
+    margin: 0 0 26px;
+  }
+  .hero .footnote{
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 15px;
+    color: var(--ink-faded);
+    border-left: 2px solid var(--rule-strong);
+    padding: 4px 0 4px 14px;
+    margin: 0 0 30px;
+    max-width: 460px;
+  }
+  .hero .footnote b{ font-style: normal; color: var(--ink); font-weight: 600; }
+
+  .cta-row{ display:flex; align-items:center; gap: 22px; flex-wrap:wrap; }
+  .btn-primary{
+    display:inline-flex; align-items:center; gap:10px;
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: 17px;
+    letter-spacing: .02em;
+    padding: 14px 22px 14px 24px;
+    background: var(--ink);
+    color: var(--paper);
+    text-decoration:none;
+    border-radius: 999px;
+    box-shadow: var(--shadow);
+    transition: transform .15s ease, box-shadow .2s ease, background .2s;
+  }
+  .btn-primary:hover{ transform: translateY(-1px); background: #000; }
+  .btn-primary .arr{ display:inline-block; transition: transform .2s; }
+  .btn-primary:hover .arr{ transform: translateX(3px); }
+
+  .cta-aside{
+    font-family: var(--hand);
+    font-size: 22px;
+    color: var(--ink-soft);
+    transform: rotate(-3deg);
+    position: relative;
+    padding-left: 36px;
+  }
+  .cta-aside::before{
+    content:"";
+    position:absolute; left:-2px; top: 12px;
+    width: 34px; height: 22px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 30'><path d='M2 22 C 18 12, 36 10, 56 14 M 48 8 L 56 14 L 50 22' fill='none' stroke='%231A1A1A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-size: contain;
+    background-repeat:no-repeat;
+  }
+
+  /* hero RIGHT: a torn paper card showing one card mockup */
+  .hero-card{
+    position:relative;
+    background: var(--paper-2);
+    padding: 22px 22px 18px;
+    border-radius: 4px;
+    box-shadow: var(--shadow);
+    transform: rotate(1.4deg);
+    border-top: 1px solid rgba(255,255,255,.6);
+  }
+  .hero-card::before{
+    /* torn top edge */
+    content:""; position:absolute; left:0; right:0; top:-6px; height:10px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 12' preserveAspectRatio='none'><path d='M0 8 L 8 4 L 16 9 L 24 3 L 34 8 L 44 4 L 52 9 L 62 5 L 72 9 L 82 4 L 92 9 L 102 5 L 112 9 L 122 3 L 134 8 L 144 4 L 152 9 L 162 5 L 172 9 L 182 4 L 192 9 L 200 6 L 200 12 L 0 12 Z' fill='%23F4ECD8'/></svg>");
+    background-size: 100% 100%;
+    background-repeat:no-repeat;
+  }
+  .hero-card .tape{
+    position:absolute; top: -14px; left: 50%; transform: translateX(-50%) rotate(-3deg);
+    width: 78px; height: 22px;
+    background: rgba(255, 230, 140, .55);
+    border: 1px solid rgba(180,150,60,.25);
+    box-shadow: 0 1px 0 rgba(0,0,0,.05);
+  }
+  .hc-title{
+    font-family: var(--serif); font-weight: 600; font-size: 22px;
+    margin: 8px 0 14px; letter-spacing: -.01em;
+  }
+  .hc-list{ list-style: none; padding: 0; margin:0; }
+  .hc-list li{
+    display:flex; align-items:center; gap:12px;
+    padding: 9px 2px;
+    border-bottom: 1px dashed var(--rule);
+    font-size: 17px;
+  }
+  .hc-list li:last-child{ border-bottom:0; }
+  .check{
+    width: 22px; height: 22px; flex: 0 0 22px;
+    border: 1.5px solid var(--ink);
+    border-radius: 3px;
+    display:inline-flex; align-items:center; justify-content:center;
+    background: transparent;
+  }
+  .check.done{
+    background: transparent;
+    position:relative;
+  }
+  .check.done::after{
+    content:"";
+    position:absolute; inset:-4px;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'><path d='M5 16 L 13 23 L 26 6' fill='none' stroke='%232C5F2D' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-size: contain; background-repeat:no-repeat;
+  }
+  .li-done span{ text-decoration: line-through; color: var(--ink-faded); }
+  .li-done .ink-pen{ text-decoration: none; }
+
+  /* ============ SECTION HEADERS ============ */
+  section{ padding: 84px 0; }
+  @media (max-width: 720px){ section{ padding: 60px 0; } }
+  .sect-head{
+    display:flex; align-items:end; gap: 24px;
+    margin-bottom: 38px;
+    border-bottom: 1px solid var(--rule-strong);
+    padding-bottom: 18px;
+  }
+  .sect-num{
+    font-family: var(--hand);
+    color: var(--red);
+    font-size: 44px;
+    line-height: 1;
+    transform: rotate(-4deg);
+    flex: 0 0 auto;
+  }
+  .sect-title{
+    font-family: var(--serif); font-weight: 500;
+    font-size: clamp(28px, 3.4vw, 44px);
+    line-height: 1.05; letter-spacing: -.01em;
+    margin: 0;
+  }
+  .sect-kicker{
+    font-family: var(--serif); font-style: italic;
+    color: var(--ink-faded);
+    margin-top: 4px;
+  }
+
+  /* ============ PAPER PAIN ============ */
+  .pain-grid{
+    display:grid; grid-template-columns: repeat(3, 1fr); gap: 28px;
+  }
+  @media (max-width: 880px){ .pain-grid{ grid-template-columns: 1fr; } }
+
+  .pain-card{
+    background: var(--paper-2);
+    padding: 26px 24px 22px;
+    box-shadow: var(--shadow-soft);
+    position:relative;
+    border-radius: 3px;
+  }
+  .pain-card:nth-child(1){ transform: rotate(-.6deg); }
+  .pain-card:nth-child(2){ transform: rotate(.4deg); margin-top: 14px; }
+  .pain-card:nth-child(3){ transform: rotate(-.3deg); }
+
+  .pain-card .scribble{
+    font-family: var(--hand);
+    font-size: 30px;
+    color: var(--red);
+    transform: rotate(-3deg);
+    display:inline-block;
+    margin-bottom: 6px;
+  }
+  .pain-card h3{
+    font-family: var(--serif); font-weight: 600;
+    font-size: 22px; margin: 4px 0 8px;
+  }
+  .pain-card p{ margin: 0; color: var(--ink-soft); font-size: 16.5px; }
+
+  /* ============ SOLUTION INTRO ============ */
+  .solution{ text-align:left; }
+  .solution-row{
+    display:grid; grid-template-columns: 1.1fr 1fr; gap: 48px; align-items:center;
+  }
+  @media (max-width: 880px){ .solution-row{ grid-template-columns: 1fr; } }
+  .solution-row p{ font-size: 20px; line-height: 1.55; max-width: 580px; }
+  .solution-quote{
+    font-family: var(--hand);
+    font-size: 36px;
+    line-height: 1.2;
+    color: var(--ink);
+    transform: rotate(-1deg);
+    padding-left: 22px;
+    border-left: 3px solid var(--red);
+  }
+
+  /* ============ MOCKUP CHROME (app shell) ============ */
+  .mock{
+    background: var(--paper-2);
+    border-radius: 6px;
+    box-shadow: var(--shadow);
+    padding: 0;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid var(--rule-strong);
+  }
+  .mock-top{
+    background: var(--paper-edge);
+    border-bottom: 1px solid var(--rule-strong);
+    padding: 10px 16px;
+    display:flex; align-items:center; gap:10px;
+    font-family: var(--serif);
+    font-size: 13px;
+    color: var(--ink-faded);
+  }
+  .mock-dots{ display:inline-flex; gap:6px; margin-right: 6px; }
+  .mock-dots i{ width:10px; height:10px; border-radius:50%; background:#cfc6ad; display:inline-block; }
+  .mock-dots i:nth-child(1){ background:#D1495B; }
+  .mock-dots i:nth-child(2){ background:#E0B23B; }
+  .mock-dots i:nth-child(3){ background:#2C5F2D; }
+  .mock-url{
+    flex:1;
+    text-align:center;
+    font-family: var(--serif);
+    color: var(--ink-soft);
+    letter-spacing:.02em;
+  }
+  .mock-url b{ color: var(--ink); }
+
+  .app{
+    display:grid;
+    grid-template-columns: 70% 30%;
+    min-height: 540px;
+  }
+  @media (max-width: 720px){
+    .app{ grid-template-columns: 1fr; }
+  }
+
+  .app-left{
+    padding: 22px 22px 28px;
+    border-right: 1px dashed var(--rule-strong);
+    background:
+      repeating-linear-gradient(transparent 0 31px, rgba(26,26,26,.05) 31px 32px);
+  }
+  .app-topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom: 18px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--rule-strong);
+  }
+  .app-board-name{
+    font-family: var(--serif); font-weight: 600; font-size: 24px;
+    letter-spacing: -.01em;
+  }
+  .app-board-name .pencil{
+    font-family: var(--hand); color: var(--ink-faded); margin-left: 6px; font-size: 18px;
+  }
+  .app-actions{ display:flex; gap: 10px; }
+  .pill{
+    font-family: var(--serif); font-size: 13px;
+    padding: 6px 12px;
+    border: 1px solid var(--rule-strong); border-radius: 999px;
+    color: var(--ink-soft);
+    background: transparent;
+  }
+  .pill.solid{ background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+  .card-grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 18px;
+  }
+  .card{
+    background: var(--paper);
+    padding: 16px 16px 14px;
+    border-radius: 4px;
+    box-shadow: 0 1px 0 rgba(0,0,0,.04), 0 8px 16px -14px rgba(0,0,0,.4);
+    border: 1px solid var(--rule-strong);
+    position: relative;
+  }
+  .card-title{
+    display:flex; align-items:baseline; justify-content:space-between;
+    margin-bottom: 8px;
+  }
+  .card-title h4{
+    margin: 0;
+    font-family: var(--serif); font-weight: 600; font-size: 17px;
+  }
+  .card-title .clear{
+    font-family: var(--hand); font-size: 16px;
+    color: var(--red);
+    cursor: default;
+  }
+  .card ul{ margin:0; padding:0; list-style:none; }
+  .card li{
+    display:flex; align-items:center; gap: 10px;
+    padding: 6px 0;
+    border-bottom: 1px dashed var(--rule);
+    font-size: 15px;
+  }
+  .card li:last-child{ border-bottom:0; }
+  .card .ico-row{
+    display:flex; gap: 6px; margin-left:auto; opacity:.55;
+  }
+  .ico{
+    width: 18px; height: 18px;
+    display:inline-flex; align-items:center; justify-content:center;
+    font-family: var(--hand);
+    font-size: 13px;
+    color: var(--ink-faded);
+    border: 1px dashed var(--rule-strong);
+    border-radius: 3px;
+    line-height: 1;
+  }
+  .ico.t{ color: var(--red); border-color: rgba(209,73,91,.4); }
+  .ico.w{ color: var(--green); border-color: rgba(44,95,45,.4); }
+  .ico.active{ background: rgba(209,73,91,.10); border-style: solid; }
+  .ico.w.active{ background: rgba(44,95,45,.10); border-style: solid; }
+  .new-input{
+    margin-top: 8px;
+    font-family: var(--hand);
+    font-size: 18px;
+    color: var(--ink-faded);
+    border-top: 1px dashed var(--rule-strong);
+    padding-top: 8px;
+  }
+  .new-input::before{ content:"+ "; color: var(--red); }
+
+  /* right panel */
+  .app-right{
+    padding: 22px 18px 24px;
+    background: var(--paper-edge);
+  }
+  .tabs{
+    display:flex; gap: 6px;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 16px;
+  }
+  .tab{
+    font-family: var(--serif); font-weight: 600;
+    padding: 8px 14px 10px;
+    font-size: 15px;
+    color: var(--ink-faded);
+    border: 1px solid transparent;
+    border-bottom: 0;
+    border-radius: 4px 4px 0 0;
+    margin-bottom: -2px;
+  }
+  .tab.active{
+    background: var(--paper-2);
+    color: var(--ink);
+    border-color: var(--ink);
+  }
+  .panel-section{ margin-bottom: 18px; }
+  .panel-section .ph{
+    display:flex; align-items:center; gap: 10px;
+    margin-bottom: 6px;
+  }
+  .panel-section .ph h5{
+    margin: 0;
+    font-family: var(--serif); font-weight: 600; font-size: 15px;
+  }
+  .badge{
+    font-family: var(--serif); font-size: 11px; letter-spacing:.06em;
+    padding: 2px 8px;
+    border: 1px solid var(--rule-strong);
+    border-radius: 999px;
+    color: var(--ink-faded);
+    text-transform: uppercase;
+  }
+  .badge.work  { color: var(--red);   border-color: rgba(209,73,91,.4); }
+  .badge.dad   { color: var(--green); border-color: rgba(44,95,45,.4); }
+  .badge.swe   { color: var(--ink);   border-color: var(--rule-strong); }
+  .badge.personal{ color: var(--ink-soft); border-color: var(--rule-strong); }
+  .panel-section ul{ list-style:none; margin:0; padding: 0 0 4px 2px; }
+  .panel-section li{
+    display:flex; align-items:center; gap:10px;
+    padding: 5px 0;
+    font-size: 14.5px;
+    color: var(--ink);
+  }
+  .panel-section li.done span{ text-decoration: line-through; color: var(--ink-faded); }
+
+  /* ============ FEATURE BLOCKS ============ */
+  .feat{
+    display:grid;
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+  .feat-copy{
+    display:grid; grid-template-columns: 1fr 1fr; gap: 32px;
+    align-items: start;
+  }
+  @media (max-width: 880px){ .feat-copy{ grid-template-columns: 1fr; } }
+  .feat-copy h3{
+    font-family: var(--serif); font-weight: 600;
+    font-size: clamp(22px, 2.4vw, 30px);
+    margin: 0 0 10px;
+    letter-spacing: -.01em;
+  }
+  .feat-copy p{ margin: 0; color: var(--ink-soft); font-size: 17px; line-height: 1.55; }
+  .feat-copy .note{
+    font-family: var(--hand); font-size: 22px; color: var(--red);
+    margin-bottom: 6px;
+  }
+
+  /* annotated mockup: floating callouts */
+  .mock-frame{ position: relative; }
+  .annot{
+    position: absolute;
+    font-family: var(--hand);
+    font-size: 21px;
+    color: var(--ink);
+    line-height: 1.1;
+    max-width: 220px;
+    z-index: 4;
+  }
+  .annot.red   { color: var(--red); }
+  .annot.green { color: var(--green); }
+  .annot::after{
+    content:"";
+    position:absolute;
+    background-repeat:no-repeat;
+    background-size:contain;
+  }
+
+  /* === Auto-clear illustration === */
+  .clock-strip{
+    display:grid;
+    grid-template-columns: 1fr 60px 1fr;
+    gap: 16px;
+    align-items: stretch;
+    background: var(--paper-2);
+    border: 1px solid var(--rule-strong);
+    padding: 22px;
+    border-radius: 6px;
+    box-shadow: var(--shadow-soft);
+  }
+  @media (max-width: 720px){ .clock-strip{ grid-template-columns: 1fr; } }
+  .cs-col h5{
+    font-family: var(--hand);
+    color: var(--ink-faded); font-size: 22px; margin: 0 0 10px;
+  }
+  .cs-col h5 b{ color: var(--ink); font-family: var(--serif); font-weight: 600; font-size: 17px; display:block; }
+  .cs-list{ list-style:none; padding:0; margin:0; }
+  .cs-list li{
+    display:flex; align-items:center; gap: 10px;
+    padding: 6px 0; border-bottom: 1px dashed var(--rule);
+    font-size: 15.5px;
+  }
+  .cs-list li:last-child{ border-bottom:0; }
+  .cs-list .removed{
+    color: var(--ink-faded);
+    text-decoration: line-through;
+    text-decoration-color: var(--red);
+    opacity:.7;
+  }
+  .cs-arrow{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    color: var(--red);
+    font-family: var(--hand);
+  }
+  .cs-arrow svg{ width: 60px; height: 60px; }
+  .cs-arrow span{ font-size: 16px; color: var(--ink-faded); margin-top: 4px; text-align:center; }
+
+  /* board index mockup */
+  .index-shell{
+    display:grid;
+    grid-template-columns: 70% 30%;
+    min-height: 380px;
+  }
+  @media (max-width: 720px){ .index-shell{ grid-template-columns: 1fr; } }
+  .idx-left{
+    padding: 24px;
+    background:
+      repeating-linear-gradient(transparent 0 31px, rgba(26,26,26,.05) 31px 32px);
+  }
+  .idx-grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 14px;
+  }
+  .idx-tile{
+    background: var(--paper);
+    border: 1px solid var(--rule-strong);
+    border-radius: 4px;
+    padding: 16px 14px;
+    box-shadow: var(--shadow-soft);
+    position: relative;
+  }
+  .idx-tile h5{
+    margin: 0 0 6px;
+    font-family: var(--serif); font-weight: 600; font-size: 18px;
+  }
+  .idx-tile .meta{
+    font-family: var(--serif); font-style: italic; font-size: 13px; color: var(--ink-faded);
+  }
+  .idx-tile .corner{
+    position: absolute; top: 8px; right: 8px;
+    font-family: var(--hand); color: var(--red); font-size: 18px;
+  }
+  .idx-new{
+    background: transparent;
+    border: 1.5px dashed var(--rule-strong);
+    color: var(--ink-faded);
+    font-family: var(--hand); font-size: 22px;
+    display:flex; align-items:center; justify-content:center;
+    min-height: 96px;
+  }
+
+  /* import/export illustration */
+  .io-row{
+    display:grid; grid-template-columns: 1fr 90px 1fr; align-items:center; gap: 16px;
+  }
+  @media (max-width: 720px){ .io-row{ grid-template-columns: 1fr; } }
+  .io-box{
+    background: var(--paper-2);
+    border: 1px solid var(--rule-strong);
+    padding: 22px 20px;
+    border-radius: 6px;
+    box-shadow: var(--shadow-soft);
+    font-family: var(--serif);
+  }
+  .io-box h5{
+    margin: 0 0 6px;
+    font-family: var(--hand); color: var(--red); font-size: 24px;
+  }
+  .io-box code{
+    display:block;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    background: var(--paper);
+    padding: 12px;
+    border-radius: 4px;
+    border: 1px dashed var(--rule-strong);
+    margin-top: 10px;
+    white-space: pre;
+    overflow: auto;
+  }
+  .io-arrow{
+    display:flex; align-items:center; justify-content:center;
+    color: var(--ink-faded);
+    font-family: var(--hand);
+    font-size: 14px;
+  }
+  .io-arrow svg{ width: 80px; height: 50px; }
+
+  /* ============ COLOPHON ============ */
+  footer{
+    margin-top: 60px;
+    border-top: 1px solid var(--rule-strong);
+    padding: 50px 0 70px;
+  }
+  .colophon{
+    display:grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 36px;
+    align-items: start;
+  }
+  @media (max-width: 720px){ .colophon{ grid-template-columns: 1fr; } }
+  .colophon h4{
+    font-family: var(--hand); color: var(--red);
+    font-size: 32px; margin: 0 0 6px;
+    transform: rotate(-2deg);
+    display:inline-block;
+  }
+  .colophon p{
+    font-size: 17px; color: var(--ink-soft);
+    line-height: 1.6;
+    max-width: 640px;
+  }
+  .colophon .stack{
+    font-family: var(--serif);
+    font-size: 14px;
+    color: var(--ink-faded);
+    line-height: 1.9;
+  }
+  .colophon .stack b{ color: var(--ink); font-weight: 600; }
+  .copy{
+    margin-top: 30px;
+    font-family: var(--serif); font-style: italic;
+    font-size: 14px; color: var(--ink-faded);
+  }
+
+  /* selection */
+  ::selection{ background: var(--highlight); color: var(--ink); }
+
+  /* tiny entrance choreography */
+  @media (prefers-reduced-motion: no-preference){
+    .reveal{ opacity:0; transform: translateY(14px); animation: rise .9s ease forwards; }
+    .reveal.d1{ animation-delay:.08s; }
+    .reveal.d2{ animation-delay:.16s; }
+    .reveal.d3{ animation-delay:.24s; }
+    .reveal.d4{ animation-delay:.32s; }
+    @keyframes rise{ to{ opacity:1; transform: translateY(0); } }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ NAV ============ -->
+<header class="wrap">
+  <div class="nav">
+    <div class="brand">
+      <span class="brand-mark">Garap<span class="dot">.</span></span>
+      <span class="brand-sub">a paper-shaped task app</span>
+    </div>
+    <nav class="nav-links">
+      <a href="#problem">The paper problem</a>
+      <a href="#features">Features</a>
+      <a href="#colophon">Colophon</a>
+      <a href="https://garappp.netlify.app/" target="_blank" rel="noopener">Open app ↗</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ============ HERO ============ -->
+<main>
+<section class="wrap hero">
+  <div>
+    <span class="hero-eyebrow reveal">a personal tool, made public</span>
+    <h1 class="reveal d1">I had too many lists<br/>on <em>paper</em>. So I built this.</h1>
+    <p class="lede reveal d2">
+      Garap is a single-screen, local-first task app that mirrors the way I&rsquo;ve
+      always planned my week — a wall of category sheets, plus two derived lists
+      for <i>Today</i> and <i>Week</i>. No accounts. No cloud. No drag-and-drop.
+      Just paper, on a screen.
+    </p>
+    <p class="footnote reveal d2">
+      <b>Garap</b> &mdash; <i>Javanese:</i> to tackle, to work on, to get done.
+    </p>
+    <div class="cta-row reveal d3">
+      <a class="btn-primary" href="https://garappp.netlify.app/" target="_blank" rel="noopener">
+        Open the app <span class="arr">→</span>
+      </a>
+      <span class="cta-aside">free, runs in&nbsp;your browser</span>
+    </div>
+  </div>
+
+  <!-- HERO MOCKUP: a single card pinned with tape -->
+  <aside class="reveal d2">
+    <div class="hero-card">
+      <span class="tape"></span>
+      <div class="hc-title">SWE Learning <span style="font-family:var(--hand);color:var(--ink-faded);font-size:14px;margin-left:6px">— this week</span></div>
+      <ul class="hc-list">
+        <li><span class="check done"></span><span class="li-done"><span>Finish Rust book &mdash; ch.8 ownership</span></span></li>
+        <li><span class="check"></span><span>Ship landing page for Garap</span></li>
+        <li><span class="check"></span><span>Watch &ldquo;Designing Data-Intensive Apps&rdquo; talk</span></li>
+        <li><span class="check done"></span><span class="li-done"><span>Refactor auto-clear date math</span></span></li>
+        <li><span class="check"></span><span>Sketch v2 for the Today panel</span></li>
+      </ul>
+    </div>
+  </aside>
+</section>
+
+<!-- ============ PAPER PROBLEM ============ -->
+<section id="problem" class="wrap">
+  <div class="sect-head">
+    <div class="sect-num">01</div>
+    <div>
+      <h2 class="sect-title">The paper problem.</h2>
+      <div class="sect-kicker">Why a digital tool, when paper already worked?</div>
+    </div>
+  </div>
+  <div class="pain-grid">
+    <article class="pain-card reveal">
+      <span class="scribble">scattered.</span>
+      <h3>Lists live everywhere.</h3>
+      <p>Work sheet on the desk. Family list on the fridge. SWE goals in a notebook. None of them know about each other.</p>
+    </article>
+    <article class="pain-card reveal d1">
+      <span class="scribble">cluttered.</span>
+      <h3>Done items pile up.</h3>
+      <p>By Wednesday the sheet is half-ticked, mostly noise. Re-copying the survivors onto a fresh page is the entire ritual.</p>
+    </article>
+    <article class="pain-card reveal d2">
+      <span class="scribble">out of sync.</span>
+      <h3>Today &amp; Week drift.</h3>
+      <p>Today&rsquo;s list says &ldquo;reply to Andre.&rdquo; The category sheet still has it unchecked. Now both are wrong.</p>
+    </article>
+  </div>
+</section>
+
+<!-- ============ SOLUTION INTRO ============ -->
+<section class="wrap solution">
+  <div class="sect-head">
+    <div class="sect-num">02</div>
+    <div>
+      <h2 class="sect-title">A single screen, shaped like paper.</h2>
+      <div class="sect-kicker">Same workflow. None of the friction.</div>
+    </div>
+  </div>
+  <div class="solution-row">
+    <p>
+      The whole app is one screen, split 70/30. The left is your <b>board</b>:
+      a wall of category cards, each with a checklist. The right is the
+      <b>Today&nbsp;/&nbsp;Week</b> panel &mdash; the same items, re-grouped by horizon.
+      Tick a task anywhere and it&rsquo;s done everywhere. At midnight,
+      finished items quietly fall away on their own.
+    </p>
+    <div class="solution-quote">
+      &ldquo;Brainstorm freely.<br/>Tick what&rsquo;s done.<br/>Carry the rest.&rdquo;
+    </div>
+  </div>
+</section>
+
+<!-- ============ FEATURES ============ -->
+<section id="features" class="wrap">
+  <div class="sect-head">
+    <div class="sect-num">03</div>
+    <div>
+      <h2 class="sect-title">Six things it does well.</h2>
+      <div class="sect-kicker">Everything else is deliberately not in the app.</div>
+    </div>
+  </div>
+
+  <!-- ============ FEATURE 1: BOARD VIEW (pixel-faithful hero) ============ -->
+  <div class="feat reveal">
+    <div class="feat-copy">
+      <div>
+        <div class="note">Feature 01</div>
+        <h3>One board. A wall of cards.</h3>
+      </div>
+      <p>
+        Each card is a category. Each line is a task. Add items by typing &mdash;
+        Enter to commit, click to edit. Completed items strike through and
+        sink to the bottom; clear them out when you want a fresh sheet.
+      </p>
+    </div>
+
+    <div class="mock">
+      <div class="mock-top">
+        <span class="mock-dots"><i></i><i></i><i></i></span>
+        <span class="mock-url">garappp.netlify.app<b>/board/work-q2</b></span>
+      </div>
+      <div class="app">
+        <!-- LEFT: 70% board area -->
+        <div class="app-left">
+          <div class="app-topbar">
+            <div class="app-board-name">Work &mdash; Q2<span class="pencil">✎ rename</span></div>
+            <div class="app-actions">
+              <span class="pill">Export JSON</span>
+              <span class="pill">Import JSON</span>
+              <span class="pill solid">+ New card</span>
+            </div>
+          </div>
+
+          <div class="card-grid">
+            <!-- Card 1: Sprint -->
+            <div class="card">
+              <div class="card-title"><h4>Current sprint</h4><span class="clear">clear ✓</span></div>
+              <ul>
+                <li><span class="check"></span><span>Review PR #142 — auth refactor</span>
+                  <span class="ico-row"><span class="ico t active">T</span><span class="ico w">W</span></span></li>
+                <li><span class="check done"></span><span class="li-done"><span>Sprint planning notes</span></span>
+                  <span class="ico-row"><span class="ico t">T</span><span class="ico w">W</span></span></li>
+                <li><span class="check"></span><span>Spike: queue back-pressure</span>
+                  <span class="ico-row"><span class="ico t">T</span><span class="ico w active">W</span></span></li>
+                <li><span class="check"></span><span>1:1 with Maya — career chat</span>
+                  <span class="ico-row"><span class="ico t">T</span><span class="ico w">W</span></span></li>
+              </ul>
+              <div class="new-input">add an item…</div>
+            </div>
+            <!-- Card 2: Email -->
+            <div class="card">
+              <div class="card-title"><h4>Email &amp; comms</h4><span class="clear">clear ✓</span></div>
+              <ul>
+                <li><span class="check"></span><span>Reply to Andre — budget Q2</span>
+                  <span class="ico-row"><span class="ico t active">T</span><span class="ico w">W</span></span></li>
+                <li><span class="check"></span><span>Follow up vendor renewal</span>
+                  <span class="ico-row"><span class="ico t">T</span><span class="ico w">W</span></span></li>
+                <li><span class="check done"></span><span class="li-done"><span>Forward design review notes</span></span>
+                  <span class="ico-row"><span class="ico t">T</span><span class="ico w">W</span></span></li>
+              </ul>
+              <div class="new-input">add an item…</div>
+            </div>
+            <!-- Card 3: Long term -->
+            <div class="card">
+              <div class="card-title"><h4>Long-running</h4><span class="clear">clear ✓</span></div>
+              <ul>
+                <li><span class="check"></span><span>Write RFC: cache invalidation</span>
+                  <span class="ico-row"><span class="ico t">T</span><span class="ico w active">W</span></span></li>
+                <li><span class="check"></span><span>Hiring loop &mdash; backend role</span>
+                  <span class="ico-row"><span class="ico t">T</span><span class="ico w">W</span></span></li>
+                <li><span class="check"></span><span>Migrate metrics to OTel</span>
+                  <span class="ico-row"><span class="ico t">T</span><span class="ico w">W</span></span></li>
+              </ul>
+              <div class="new-input">add an item…</div>
+            </div>
+            <!-- Card 4: Personal admin (work) -->
+            <div class="card">
+              <div class="card-title"><h4>Ops &amp; admin</h4><span class="clear">clear ✓</span></div>
+              <ul>
+                <li><span class="check done"></span><span class="li-done"><span>Submit expense report</span></span>
+                  <span class="ico-row"><span class="ico t">T</span><span class="ico w">W</span></span></li>
+                <li><span class="check"></span><span>Renew SOC2 access review</span>
+                  <span class="ico-row"><span class="ico t">T</span><span class="ico w active">W</span></span></li>
+                <li><span class="check"></span><span>Update on-call calendar</span>
+                  <span class="ico-row"><span class="ico t">T</span><span class="ico w">W</span></span></li>
+              </ul>
+              <div class="new-input">add an item…</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: 30% panel -->
+        <div class="app-right">
+          <div class="tabs">
+            <div class="tab active">Today</div>
+            <div class="tab">Week</div>
+          </div>
+          <div class="panel-section">
+            <div class="ph"><h5>Current sprint</h5><span class="badge work">Work — Q2</span></div>
+            <ul>
+              <li><span class="check"></span><span>Review PR #142</span></li>
+            </ul>
+          </div>
+          <div class="panel-section">
+            <div class="ph"><h5>Email &amp; comms</h5><span class="badge work">Work — Q2</span></div>
+            <ul>
+              <li><span class="check"></span><span>Reply to Andre — budget Q2</span></li>
+            </ul>
+          </div>
+          <div class="panel-section">
+            <div class="ph"><h5>Bedtime &amp; bath</h5><span class="badge dad">Dad</span></div>
+            <ul>
+              <li><span class="check"></span><span>Read chapter 3 to Aira</span></li>
+              <li><span class="check done"></span><span>Pack school bag for tomorrow</span></li>
+            </ul>
+          </div>
+          <div class="panel-section">
+            <div class="ph"><h5>SWE Learning</h5><span class="badge swe">Learning</span></div>
+            <ul>
+              <li><span class="check"></span><span>30 min on Rust ch.8</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ FEATURE 2: TODAY/WEEK PANEL ============ -->
+  <div class="feat reveal" style="margin-top:72px">
+    <div class="feat-copy">
+      <div>
+        <div class="note">Feature 02</div>
+        <h3>Today &amp; Week, in one glance.</h3>
+      </div>
+      <p>
+        Every task can be added to <b style="color:var(--red)">Today</b> or
+        <b style="color:var(--green)">Week</b> with one click &mdash; or both, independently.
+        Items stay grouped by their card and tagged with the board they came from,
+        so context is never lost when you&rsquo;re pulling priorities from four parts of your life.
+      </p>
+    </div>
+
+    <div class="mock-frame">
+      <!-- annotations -->
+      <span class="annot red" style="top:-10px; left:-6px; transform: rotate(-3deg);">
+        switch horizons with one tap →
+      </span>
+      <span class="annot green" style="top:140px; right:-10px; transform: rotate(2deg); text-align:right;">
+        ← each group keeps<br/>its board badge
+      </span>
+
+      <div class="mock">
+        <div class="mock-top">
+          <span class="mock-dots"><i></i><i></i><i></i></span>
+          <span class="mock-url">garappp.netlify.app<b>/</b> &nbsp;·&nbsp; <i>panel only</i></span>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; min-height: 380px;">
+          <!-- Today -->
+          <div style="padding:22px 22px; border-right: 1px dashed var(--rule-strong); background: var(--paper-edge);">
+            <div class="tabs">
+              <div class="tab active" style="color:var(--red); border-color: var(--red);">Today</div>
+              <div class="tab">Week</div>
+            </div>
+            <div class="panel-section">
+              <div class="ph"><h5>Current sprint</h5><span class="badge work">Work — Q2</span></div>
+              <ul>
+                <li><span class="check"></span><span>Review PR #142</span></li>
+                <li><span class="check"></span><span>1:1 prep — Maya</span></li>
+              </ul>
+            </div>
+            <div class="panel-section">
+              <div class="ph"><h5>Bedtime &amp; bath</h5><span class="badge dad">Dad</span></div>
+              <ul>
+                <li><span class="check done"></span><span>Pack school bag</span></li>
+                <li><span class="check"></span><span>Read chapter 3</span></li>
+              </ul>
+            </div>
+            <div class="panel-section">
+              <div class="ph"><h5>Gym &amp; body</h5><span class="badge personal">Personal</span></div>
+              <ul>
+                <li><span class="check"></span><span>Lift — push day</span></li>
+              </ul>
+            </div>
+            <div class="panel-section">
+              <div class="ph"><h5>SWE Learning</h5><span class="badge swe">Learning</span></div>
+              <ul>
+                <li><span class="check"></span><span>30 min on Rust ch.8</span></li>
+              </ul>
+            </div>
+          </div>
+          <!-- Week -->
+          <div style="padding:22px 22px; background: var(--paper-edge);">
+            <div class="tabs">
+              <div class="tab">Today</div>
+              <div class="tab active" style="color:var(--green); border-color: var(--green);">Week</div>
+            </div>
+            <div class="panel-section">
+              <div class="ph"><h5>Long-running</h5><span class="badge work">Work — Q2</span></div>
+              <ul>
+                <li><span class="check"></span><span>Write RFC: cache invalidation</span></li>
+                <li><span class="check"></span><span>Migrate metrics to OTel</span></li>
+              </ul>
+            </div>
+            <div class="panel-section">
+              <div class="ph"><h5>Ops &amp; admin</h5><span class="badge work">Work — Q2</span></div>
+              <ul>
+                <li><span class="check"></span><span>SOC2 access review</span></li>
+              </ul>
+            </div>
+            <div class="panel-section">
+              <div class="ph"><h5>Weekend with kids</h5><span class="badge dad">Dad</span></div>
+              <ul>
+                <li><span class="check"></span><span>Saturday park trip</span></li>
+                <li><span class="check"></span><span>Pediatrician appt — Tue</span></li>
+              </ul>
+            </div>
+            <div class="panel-section">
+              <div class="ph"><h5>Reading list</h5><span class="badge personal">Personal</span></div>
+              <ul>
+                <li><span class="check"></span><span>Finish &ldquo;The Goal&rdquo; (60 pages left)</span></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ FEATURE 3: COMPLETION SYNC ============ -->
+  <div class="feat reveal" style="margin-top:84px">
+    <div class="feat-copy">
+      <div>
+        <div class="note">Feature 03</div>
+        <h3>One tick, everywhere.</h3>
+      </div>
+      <p>
+        The card is the source of truth. Tick a task in Today &mdash; it&rsquo;s ticked in
+        the card. Tick it in the card &mdash; it&rsquo;s ticked in Today and Week.
+        There is no &ldquo;Today copy&rdquo; of your task. There&rsquo;s the task,
+        and there are pointers.
+      </p>
+    </div>
+
+    <div class="mock-frame">
+      <span class="annot red" style="top:-4px; left:46%; transform: rotate(-2deg);">
+        same item, two places &mdash;<br/>tick one, both update.
+      </span>
+
+      <div class="mock">
+        <div class="mock-top">
+          <span class="mock-dots"><i></i><i></i><i></i></span>
+          <span class="mock-url">garappp.netlify.app<b>/board/dad</b> · live sync, one source of truth</span>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; min-height: 320px;">
+          <!-- card side -->
+          <div style="padding: 22px; border-right: 1px dashed var(--rule-strong); background:
+            repeating-linear-gradient(transparent 0 31px, rgba(26,26,26,.05) 31px 32px);">
+            <div style="font-family:var(--hand);font-size:18px;color:var(--ink-faded);margin-bottom:6px;">card view (board: Dad)</div>
+            <div class="card" style="max-width: 360px">
+              <div class="card-title"><h4>Bedtime &amp; bath</h4><span class="clear">clear ✓</span></div>
+              <ul>
+                <li><span class="check done"></span><span class="li-done"><span>Pack school bag for tomorrow</span></span>
+                  <span class="ico-row"><span class="ico t active">T</span><span class="ico w">W</span></span></li>
+                <li><span class="check"></span><span>Read chapter 3 to Aira</span>
+                  <span class="ico-row"><span class="ico t active">T</span><span class="ico w">W</span></span></li>
+                <li><span class="check"></span><span>Bath &amp; brush teeth</span>
+                  <span class="ico-row"><span class="ico t">T</span><span class="ico w">W</span></span></li>
+              </ul>
+            </div>
+          </div>
+          <!-- today side -->
+          <div style="padding: 22px; background: var(--paper-edge);">
+            <div style="font-family:var(--hand);font-size:18px;color:var(--ink-faded);margin-bottom:6px;">Today panel</div>
+            <div class="tabs">
+              <div class="tab active" style="color:var(--red); border-color: var(--red);">Today</div>
+              <div class="tab">Week</div>
+            </div>
+            <div class="panel-section">
+              <div class="ph"><h5>Bedtime &amp; bath</h5><span class="badge dad">Dad</span></div>
+              <ul>
+                <li><span class="check done"></span><span class="li-done">Pack school bag for tomorrow</span></li>
+                <li><span class="check"></span><span>Read chapter 3 to Aira</span></li>
+              </ul>
+            </div>
+            <div style="margin-top: 22px; font-family: var(--hand); color: var(--green); font-size: 22px;">
+              ✓ same checkbox state. always.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ FEATURE 4: AUTO-CLEAR ============ -->
+  <div class="feat reveal" style="margin-top:84px">
+    <div class="feat-copy">
+      <div>
+        <div class="note">Feature 04</div>
+        <h3>Lists that clean themselves.</h3>
+      </div>
+      <p>
+        At local <b>midnight</b>, finished items disappear from Today.
+        At <b>Monday 00:00</b>, finished items disappear from Week. Anything still
+        un-ticked carries over &mdash; nothing important is silently dropped.
+        The underlying task on the card is left alone.
+      </p>
+    </div>
+
+    <div class="clock-strip">
+      <div class="cs-col">
+        <h5>before midnight <b>11:58 PM, Tuesday</b></h5>
+        <ul class="cs-list">
+          <li><span class="check done"></span><span class="li-done"><span>Reply to Andre — budget Q2</span></span></li>
+          <li><span class="check done"></span><span class="li-done"><span>Submit expense report</span></span></li>
+          <li><span class="check"></span><span>Review PR #142</span></li>
+          <li><span class="check"></span><span>Read chapter 3 to Aira</span></li>
+        </ul>
+      </div>
+      <div class="cs-arrow">
+        <svg viewBox="0 0 60 60" fill="none">
+          <path d="M5 30 C 20 14, 40 14, 55 30" stroke="#D1495B" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M48 23 L 55 30 L 48 37" stroke="#D1495B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </svg>
+        <span>midnight<br/>tick → tock</span>
+      </div>
+      <div class="cs-col">
+        <h5>after midnight <b>12:01 AM, Wednesday</b></h5>
+        <ul class="cs-list">
+          <li class="removed"><span class="check done" style="opacity:.5"></span><span>Reply to Andre — budget Q2</span></li>
+          <li class="removed"><span class="check done" style="opacity:.5"></span><span>Submit expense report</span></li>
+          <li><span class="check"></span><span>Review PR #142</span></li>
+          <li><span class="check"></span><span>Read chapter 3 to Aira</span></li>
+        </ul>
+        <div style="font-family: var(--hand); color: var(--green); font-size: 19px; margin-top: 10px;">
+          ✓ done items dropped &mdash; unfinished carry over.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ FEATURE 5: BOARD INDEX ============ -->
+  <div class="feat reveal" style="margin-top:84px">
+    <div class="feat-copy">
+      <div>
+        <div class="note">Feature 05</div>
+        <h3>Multiple boards, one life.</h3>
+      </div>
+      <p>
+        One board per area of life: Work, Dad, Personal, SWE Learning &mdash; whatever
+        the seasons of your year demand. The board index lives at the home route;
+        the Today/Week panel stays mounted across every board so priorities are
+        always visible.
+      </p>
+    </div>
+
+    <div class="mock">
+      <div class="mock-top">
+        <span class="mock-dots"><i></i><i></i><i></i></span>
+        <span class="mock-url">garappp.netlify.app<b>/</b> · board index</span>
+      </div>
+      <div class="index-shell">
+        <div class="idx-left">
+          <div class="app-topbar">
+            <div class="app-board-name">My boards</div>
+            <div class="app-actions">
+              <span class="pill solid">+ New board</span>
+            </div>
+          </div>
+          <div class="idx-grid">
+            <a class="idx-tile" style="text-decoration:none;color:inherit;">
+              <span class="corner">★</span>
+              <h5>Work — Q2</h5>
+              <div class="meta">4 cards · 18 tasks · 7 done</div>
+            </a>
+            <a class="idx-tile" style="text-decoration:none;color:inherit;">
+              <h5>Dad</h5>
+              <div class="meta">3 cards · 12 tasks · 4 done</div>
+            </a>
+            <a class="idx-tile" style="text-decoration:none;color:inherit;">
+              <h5>Personal</h5>
+              <div class="meta">2 cards · 9 tasks · 3 done</div>
+            </a>
+            <a class="idx-tile" style="text-decoration:none;color:inherit;">
+              <h5>SWE Learning</h5>
+              <div class="meta">3 cards · 11 tasks · 5 done</div>
+            </a>
+            <a class="idx-tile" style="text-decoration:none;color:inherit;">
+              <h5>Home renovation</h5>
+              <div class="meta">2 cards · 6 tasks · 1 done</div>
+            </a>
+            <div class="idx-tile idx-new">+ new board</div>
+          </div>
+        </div>
+        <div class="app-right">
+          <div class="tabs">
+            <div class="tab active">Today</div>
+            <div class="tab">Week</div>
+          </div>
+          <div class="panel-section">
+            <div class="ph"><h5>Current sprint</h5><span class="badge work">Work — Q2</span></div>
+            <ul><li><span class="check"></span>Review PR #142</li></ul>
+          </div>
+          <div class="panel-section">
+            <div class="ph"><h5>Bedtime &amp; bath</h5><span class="badge dad">Dad</span></div>
+            <ul>
+              <li><span class="check done"></span><span class="li-done">Pack school bag</span></li>
+              <li><span class="check"></span>Read chapter 3</li>
+            </ul>
+          </div>
+          <div class="panel-section">
+            <div class="ph"><h5>SWE Learning</h5><span class="badge swe">Learning</span></div>
+            <ul><li><span class="check"></span>30 min on Rust ch.8</li></ul>
+          </div>
+          <div style="font-family:var(--hand); color: var(--ink-faded); font-size: 18px; margin-top: 16px;">
+            ← the panel is always here.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ FEATURE 6: IMPORT/EXPORT ============ -->
+  <div class="feat reveal" style="margin-top:84px">
+    <div class="feat-copy">
+      <div>
+        <div class="note">Feature 06</div>
+        <h3>Your data, on your machine.</h3>
+      </div>
+      <p>
+        Garap lives in your browser&rsquo;s IndexedDB. No server, no sync, no account.
+        For backup or moving between machines, export everything to a JSON file
+        and import it back. The file is the format. It&rsquo;s yours.
+      </p>
+    </div>
+
+    <div class="io-row">
+      <div class="io-box">
+        <h5>export.json</h5>
+        <div style="color:var(--ink-soft); font-size:15px;">A single, readable file. Diffable. Versionable. Yours.</div>
+<code>{
+  "boards": [
+    { "id": "b1", "name": "Work — Q2" },
+    { "id": "b2", "name": "Dad" }
+  ],
+  "cards": [...],
+  "items": [
+    { "id": "i17", "cardId": "c4",
+      "name": "Review PR #142",
+      "completed": false }
+  ],
+  "todayRefs": [{ "itemId": "i17" }],
+  "weekRefs":  []
+}</code>
+      </div>
+      <div class="io-arrow">
+        <svg viewBox="0 0 80 50" fill="none">
+          <path d="M4 25 C 24 6, 52 6, 76 25" stroke="#1A1A1A" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 0"/>
+          <path d="M68 18 L 76 25 L 68 32" stroke="#1A1A1A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="io-box">
+        <h5>import → replace</h5>
+        <p style="margin:0;color:var(--ink-soft);font-size:15px;">
+          On import, the file replaces everything currently in the browser.
+          A confirmation prompt makes the destructive step explicit &mdash; no merge,
+          no migration, no hidden state.
+        </p>
+        <div style="margin-top: 18px; font-family: var(--hand); color: var(--green); font-size: 22px;">
+          ✓ disaster-recovery in one click.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOOTER / COLOPHON ============ -->
+<footer id="colophon">
+  <div class="wrap">
+    <div class="colophon">
+      <div>
+        <h4>Colophon.</h4>
+        <p>
+          Garap is a deliberately small piece of software. It was built to replace a
+          stack of paper sheets and nothing more. There is no account system,
+          no cloud, no analytics, no AI assist. Your boards, cards, and items
+          live in your browser&rsquo;s IndexedDB &mdash; the same place your bookmarks
+          and history live. The JSON export is the only way data leaves the device,
+          and that&rsquo;s entirely on you.
+        </p>
+        <p style="margin-top:18px;">
+          The aesthetic is on purpose, too. The thing it replaces was a paper
+          notebook, so the screen is shaped like one: cream, ruled, ink. The
+          two markers (red for Today, green for done) are the only colors that
+          carry information. Everything else is restraint.
+        </p>
+      </div>
+      <div class="stack">
+        <div style="font-family:var(--hand);font-size:24px;color:var(--red); transform: rotate(-1deg); display:inline-block; margin-bottom: 4px;">stack</div>
+        <div><b>React 19</b> + TypeScript + Vite</div>
+        <div><b>TanStack Router</b> — file-based routes</div>
+        <div><b>Dexie.js</b> over IndexedDB</div>
+        <div><b>dexie-react-hooks</b> for reactive reads</div>
+        <div><b>shadcn/ui</b> (Tailwind + Radix primitives)</div>
+        <div><b>Vitest</b> · <b>Playwright</b> for tests</div>
+        <div><b>Sentry</b> — errors only, PII-scrubbed</div>
+        <div><b>Netlify</b> — static SPA</div>
+
+        <div style="margin-top: 22px;">
+          <a class="btn-primary" href="https://garappp.netlify.app/" target="_blank" rel="noopener" style="font-size:15px; padding:10px 18px;">
+            Try it &nbsp;<span class="arr">→</span>
+          </a>
+        </div>
+      </div>
+    </div>
+    <div class="copy">
+      © 2026 Rico Putra Pradana &nbsp;·&nbsp; <i>Garap (Javanese): to tackle, to work on, to get done.</i>
+    </div>
+  </div>
+</footer>
+</main>
+
+</body>
+</html>
