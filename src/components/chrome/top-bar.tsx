@@ -1,0 +1,90 @@
+import { useState } from 'react'
+import { Link } from '@tanstack/react-router'
+import { Download, Moon, Sun, Upload } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { ImportDialog } from '@/components/dialogs/import-dialog'
+import { downloadJson } from '@/services/import-export'
+import { useTheme } from '@/lib/theme'
+
+export const TopBar = () => {
+  const [importOpen, setImportOpen] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const { theme, toggle: toggleTheme } = useTheme()
+
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      await downloadJson()
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  return (
+    <header className="relative z-10 flex items-center justify-between gap-6 border-b border-[var(--rule)] bg-[var(--bg)]/80 px-8 py-5 backdrop-blur">
+      <div className="flex items-center gap-4">
+        <Link to="/" className="group flex items-center gap-3">
+          <Mark />
+          <div className="flex flex-col leading-tight">
+            <span className="font-display text-2xl font-medium tracking-tight text-[var(--fg)] group-hover:text-[var(--accent)] transition-colors">
+              Garap
+            </span>
+            <span className="smallcaps text-[var(--fg-3)]">personal&nbsp;broadsheet</span>
+          </div>
+        </Link>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleTheme}
+              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={handleExport} disabled={exporting} aria-label="Export backup">
+              <Download className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{exporting ? 'Exporting…' : 'Export backup (JSON)'}</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={() => setImportOpen(true)} aria-label="Import backup">
+              <Upload className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Import backup (replaces all data)</TooltipContent>
+        </Tooltip>
+      </div>
+
+      <ImportDialog open={importOpen} onOpenChange={setImportOpen} />
+    </header>
+  )
+}
+
+const Mark = () => (
+  <svg viewBox="0 0 36 36" className="h-9 w-9" aria-hidden="true">
+    <rect x="1" y="1" width="34" height="34" rx="9" fill="var(--bg-2)" stroke="var(--rule)" />
+    <text
+      x="11"
+      y="26"
+      fontFamily="var(--font-display, ui-serif, Georgia, serif)"
+      fontSize="20"
+      fontWeight="500"
+      fill="var(--fg)"
+    >
+      G
+    </text>
+    <circle cx="27" cy="25" r="3.2" fill="var(--accent)" />
+  </svg>
+)

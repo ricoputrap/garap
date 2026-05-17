@@ -1,17 +1,45 @@
-export function todayKey(d: Date = new Date()): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+/**
+ * Local-time boundary helpers for Today (midnight) and Week (Monday 00:00).
+ * All math uses the host's local timezone — never UTC.
+ */
+
+export const startOfLocalDay = (ts: number): number => {
+  const d = new Date(ts)
+  d.setHours(0, 0, 0, 0)
+  return d.getTime()
 }
 
-// ISO week using Mon-Sun: returns "YYYY-Www"
-export function weekKey(d: Date = new Date()): string {
-  const target = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  const dayNum = (target.getUTCDay() + 6) % 7; // Mon=0..Sun=6
-  target.setUTCDate(target.getUTCDate() - dayNum + 3); // nearest Thursday
-  const firstThursday = new Date(Date.UTC(target.getUTCFullYear(), 0, 4));
-  const diff = (target.getTime() - firstThursday.getTime()) / 86400000;
-  const week = 1 + Math.round((diff - 3 + ((firstThursday.getUTCDay() + 6) % 7)) / 7);
-  return `${target.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
+export const nextLocalMidnight = (ts: number): number => {
+  const d = new Date(ts)
+  d.setHours(24, 0, 0, 0)
+  return d.getTime()
+}
+
+/** Most-recent Monday at 00:00 local. ISO week: Monday = 1. */
+export const startOfLocalWeek = (ts: number): number => {
+  const d = new Date(ts)
+  d.setHours(0, 0, 0, 0)
+  const day = d.getDay() // 0=Sun..6=Sat
+  const diff = (day + 6) % 7 // back to Monday
+  d.setDate(d.getDate() - diff)
+  return d.getTime()
+}
+
+export const nextLocalWeekStart = (ts: number): number => {
+  const start = startOfLocalWeek(ts)
+  const d = new Date(start)
+  d.setDate(d.getDate() + 7)
+  return d.getTime()
+}
+
+export const formatRelative = (ts: number, now = Date.now()): string => {
+  const diff = now - ts
+  const m = Math.floor(diff / 60_000)
+  if (m < 1) return 'just now'
+  if (m < 60) return `${m}m ago`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}h ago`
+  const d = Math.floor(h / 24)
+  if (d < 7) return `${d}d ago`
+  return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }

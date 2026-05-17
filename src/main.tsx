@@ -1,18 +1,25 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.tsx'
+import { RouterProvider, createRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+import { initSentry } from './lib/sentry'
+import './styles.css'
 
-// Capture beforeinstallprompt before React mounts — event fires early
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  window.__pwaInstallPrompt = e as any
-  window.dispatchEvent(new Event('pwaInstallReady'))
-})
+initSentry()
 
-createRoot(document.getElementById('root')!).render(
+const router = createRouter({ routeTree, defaultPreload: 'intent' })
+
+declare module '@tanstack/react-router' {
+  interface Register {
+    router: typeof router
+  }
+}
+
+const rootEl = document.getElementById('root')
+if (!rootEl) throw new Error('Missing #root element in index.html')
+
+createRoot(rootEl).render(
   <StrictMode>
-    <App />
+    <RouterProvider router={router} />
   </StrictMode>,
 )
