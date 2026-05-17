@@ -144,7 +144,7 @@
   .hero h1{
     font-family: var(--serif);
     font-weight: 500;
-    font-size: clamp(44px, 6.4vw, 86px);
+    font-size: clamp(40px, 5.6vw, 72px);
     line-height: 1.02;
     letter-spacing: -0.02em;
     margin: 6px 0 20px;
@@ -277,7 +277,15 @@
 
   /* ============ SECTION HEADERS ============ */
   section{ padding: 84px 0; }
-  @media (max-width: 720px){ section{ padding: 60px 0; } }
+  section.wrap + section.wrap{
+    margin-top: 56px;
+    padding: 96px 28px 84px;
+    border-top: 1px dashed var(--rule);
+  }
+  @media (max-width: 720px){
+    section{ padding: 60px 0; }
+    section.wrap + section.wrap{ margin-top: 36px; padding: 68px 28px 60px; }
+  }
   .sect-head{
     display:flex; align-items:end; gap: 24px;
     margin-bottom: 38px;
