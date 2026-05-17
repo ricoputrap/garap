@@ -15,11 +15,13 @@ export const PanelItemRow = ({ item, tab }: PanelItemRowProps) => {
     tab === 'today' ? removeFromToday(item.id) : removeFromWeek(item.id)
 
   return (
-    <li className="group flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-[var(--bg)]">
-      <Checkbox checked={item.completed} onChange={() => toggleCompleted(item.id)} />
+    <li className="group flex items-start gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-[var(--bg)]">
+      <div className="flex h-6 items-center">
+        <Checkbox checked={item.completed} onChange={() => toggleCompleted(item.id)} />
+      </div>
       <span
         className={cn(
-          'flex-1 truncate text-sm leading-snug',
+          'flex-1 text-sm leading-snug break-words',
           item.completed
             ? 'text-[var(--fg-3)] line-through decoration-[var(--fg-3)]/60'
             : 'text-[var(--fg)]',
@@ -30,7 +32,7 @@ export const PanelItemRow = ({ item, tab }: PanelItemRowProps) => {
       <button
         type="button"
         onClick={handleRemove}
-        className="flex h-6 w-6 items-center justify-center rounded-md text-[var(--fg-3)] opacity-0 transition-all hover:bg-[var(--accent-soft)] hover:text-[var(--accent-2)] group-hover:opacity-100"
+        className="mt-0 flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[var(--fg-3)] opacity-0 transition-all hover:bg-[var(--accent-soft)] hover:text-[var(--accent-2)] group-hover:opacity-100"
         aria-label={`Remove from ${tab === 'today' ? 'Today' : 'Week'}`}
       >
         <X className="h-3.5 w-3.5" />

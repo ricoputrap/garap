@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Download, Upload } from 'lucide-react'
+import { Download, Moon, Sun, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ImportDialog } from '@/components/dialogs/import-dialog'
 import { downloadJson } from '@/services/import-export'
+import { useTheme } from '@/lib/theme'
 
 export const TopBar = () => {
   const [importOpen, setImportOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const { theme, toggle: toggleTheme } = useTheme()
 
   const handleExport = async () => {
     setExporting(true)
@@ -34,6 +36,19 @@ export const TopBar = () => {
       </div>
 
       <div className="flex items-center gap-2">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleTheme}
+              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</TooltipContent>
+        </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button variant="ghost" size="icon" onClick={handleExport} disabled={exporting} aria-label="Export backup">
@@ -62,11 +77,10 @@ const Mark = () => (
     <rect x="1" y="1" width="34" height="34" rx="9" fill="var(--bg-2)" stroke="var(--rule)" />
     <path
       d="M9 12 L9 26 M9 12 L19 12 M9 19 L17 19"
-      stroke="var(--ink)"
+      stroke="var(--fg)"
       strokeWidth="2.2"
       strokeLinecap="round"
       fill="none"
-      className="dark:stroke-white"
     />
     <circle cx="25" cy="24" r="3.2" fill="var(--accent)" />
   </svg>

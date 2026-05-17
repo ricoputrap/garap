@@ -50,17 +50,19 @@ export const ItemRow = ({ item }: ItemRowProps) => {
   }
 
   return (
-    <li className="group flex items-center gap-2.5 rounded-lg px-1.5 py-1.5 transition-colors hover:bg-[var(--bg-2)]">
-      <Checkbox checked={item.completed} onChange={() => toggleCompleted(item.id)} />
-      <div className="min-w-0 flex-1">
+    <li className="group flex items-start gap-2.5 rounded-lg px-1.5 py-1.5 transition-colors hover:bg-[var(--bg-2)]">
+      <div className="flex h-7 items-center">
+        <Checkbox checked={item.completed} onChange={() => toggleCompleted(item.id)} />
+      </div>
+      <div className="min-w-0 flex-1 py-1">
         <InlineEdit
           value={item.name}
           onSave={(next) => renameItem(item.id, next)}
-          className="block w-full truncate text-sm text-[var(--fg)]"
+          className="block w-full text-sm text-[var(--fg)]"
           renderRead={(v) => (
             <span
               className={cn(
-                'block truncate text-sm leading-snug',
+                'block text-sm leading-snug break-words',
                 item.completed
                   ? 'text-[var(--fg-3)] line-through decoration-[var(--fg-3)]/60'
                   : 'text-[var(--fg)]',
@@ -72,7 +74,7 @@ export const ItemRow = ({ item }: ItemRowProps) => {
           ariaLabel="Edit task name"
         />
       </div>
-      <div className="flex items-center gap-0.5 opacity-60 transition-opacity group-hover:opacity-100">
+      <div className="flex h-7 items-center gap-0.5 opacity-60 transition-opacity group-hover:opacity-100">
         <IconToggle
           active={inToday}
           onClick={toggleToday}
