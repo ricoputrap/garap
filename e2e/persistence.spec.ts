@@ -19,10 +19,10 @@ test('boards and items survive a reload (IndexedDB persistence)', async ({ page 
   await expect(page.getByText('Stay alive')).toBeVisible()
 })
 
-test('viewports under 768px show the bigger-screen message', async ({ page }) => {
+test('viewports under 768px render the mobile bottom nav', async ({ page }) => {
   await startFresh(page)
   await page.setViewportSize({ width: 600, height: 800 })
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: /bring a bigger screen/i })).toBeVisible()
-  await expect(page.getByRole('link', { name: /open/i })).toHaveCount(0)
+  await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible()
+  await expect(page.locator('aside')).toBeHidden()
 })
