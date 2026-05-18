@@ -35,9 +35,9 @@ function BoardPage() {
               value={board.name}
               onSave={(next) => renameBoard(board.id, next)}
               className="mt-1 block w-full"
-              inputClassName="font-display text-5xl font-medium tracking-tight w-full"
+              inputClassName="font-display text-3xl font-medium tracking-tight w-full md:text-5xl"
               renderRead={(v) => (
-                <h1 className="mt-1 font-display text-5xl font-medium leading-[1.05] tracking-tight text-[var(--fg)]">
+                <h1 className="mt-1 font-display text-3xl font-medium leading-[1.05] tracking-tight text-[var(--fg)] md:text-5xl">
                   {v}
                 </h1>
               )}

@@ -9,10 +9,22 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WeekRouteImport } from './routes/week'
+import { Route as TodayRouteImport } from './routes/today'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BoardBoardIdRouteImport } from './routes/board.$boardId'
 
+const WeekRoute = WeekRouteImport.update({
+  id: '/week',
+  path: '/week',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TodayRoute = TodayRouteImport.update({
+  id: '/today',
+  path: '/today',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HistoryRoute = HistoryRouteImport.update({
   id: '/history',
   path: '/history',
@@ -32,35 +44,57 @@ const BoardBoardIdRoute = BoardBoardIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/history': typeof HistoryRoute
+  '/today': typeof TodayRoute
+  '/week': typeof WeekRoute
   '/board/$boardId': typeof BoardBoardIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/history': typeof HistoryRoute
+  '/today': typeof TodayRoute
+  '/week': typeof WeekRoute
   '/board/$boardId': typeof BoardBoardIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/history': typeof HistoryRoute
+  '/today': typeof TodayRoute
+  '/week': typeof WeekRoute
   '/board/$boardId': typeof BoardBoardIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/history' | '/board/$boardId'
+  fullPaths: '/' | '/history' | '/today' | '/week' | '/board/$boardId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/history' | '/board/$boardId'
-  id: '__root__' | '/' | '/history' | '/board/$boardId'
+  to: '/' | '/history' | '/today' | '/week' | '/board/$boardId'
+  id: '__root__' | '/' | '/history' | '/today' | '/week' | '/board/$boardId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   HistoryRoute: typeof HistoryRoute
+  TodayRoute: typeof TodayRoute
+  WeekRoute: typeof WeekRoute
   BoardBoardIdRoute: typeof BoardBoardIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/week': {
+      id: '/week'
+      path: '/week'
+      fullPath: '/week'
+      preLoaderRoute: typeof WeekRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/today': {
+      id: '/today'
+      path: '/today'
+      fullPath: '/today'
+      preLoaderRoute: typeof TodayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/history': {
       id: '/history'
       path: '/history'
@@ -88,6 +122,8 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   HistoryRoute: HistoryRoute,
+  TodayRoute: TodayRoute,
+  WeekRoute: WeekRoute,
   BoardBoardIdRoute: BoardBoardIdRoute,
 }
 export const routeTree = rootRouteImport

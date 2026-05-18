@@ -11,7 +11,10 @@ export default defineConfig({
     trace: 'on-first-retry',
     viewport: { width: 1440, height: 900 },
   },
-  projects: [{ name: 'chromium', use: devices['Desktop Chrome'] }],
+  projects: [
+    { name: 'chromium', use: devices['Desktop Chrome'], testIgnore: /mobile-.*\.spec\.ts/ },
+    { name: 'mobile', use: devices['Pixel 7'], testMatch: /mobile-.*\.spec\.ts/ },
+  ],
   webServer: {
     command: 'pnpm dev --port 5173',
     url: 'http://localhost:5173',
