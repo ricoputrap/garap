@@ -195,6 +195,11 @@
     border-color: var(--rule);
   }
   .btn-secondary:hover{ background: var(--bg-3); }
+  .btn-ghost{
+    background: transparent; color: var(--fg-3);
+    border-color: var(--rule);
+  }
+  .btn-ghost:hover{ background: var(--bg-2); color: var(--fg); border-color: var(--fg-3); }
 
   /* hero RIGHT mockup: a single floating card preview */
   .hero-frame{
@@ -903,6 +908,10 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
       </a>
       <a class="btn btn-secondary" href="#features">See how it works</a>
+      <a class="btn btn-ghost" href="https://saweria.co/ricoputrap" target="_blank" rel="noopener">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+        Support this project
+      </a>
     </div>
   </div>
 
@@ -1703,10 +1712,16 @@
           one-reader newspaper. Smallcaps eyebrows over Work Sans display. A single indigo
           accent. Everything else is restraint.
         </p>
-        <a class="btn btn-primary" href="https://garappp.netlify.app/" target="_blank" rel="noopener" style="margin-top: 10px">
-          Open the app
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>
-        </a>
+        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top: 10px;">
+          <a class="btn btn-primary" href="https://garappp.netlify.app/" target="_blank" rel="noopener">
+            Open the app
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>
+          </a>
+          <a class="btn btn-ghost" href="https://saweria.co/ricoputrap" target="_blank" rel="noopener">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+            Support this project
+          </a>
+        </div>
       </div>
       <div class="stack-list">
         <p class="eyebrow smallcaps">the stack</p>
