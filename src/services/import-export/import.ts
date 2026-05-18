@@ -1,3 +1,5 @@
+import type { Item, TodayRef, WeekRef } from '@/types/domain'
+import { ORDER_GAP } from '@/lib/ordering'
 import { db } from '@/services/db/schema'
 import { snapshotSchema, type Snapshot } from './schema'
 
@@ -22,9 +24,57 @@ const parse = (raw: string): Snapshot => {
   return result.data
 }
 
+const backfillItemOrder = (items: Snapshot['items']): Item[] => {
+  const grouped = new Map<string, typeof items>()
+  for (const it of items) {
+    const list = grouped.get(it.cardId) ?? []
+    list.push(it)
+    grouped.set(it.cardId, list)
+  }
+  const out: Item[] = []
+  for (const [, list] of grouped) {
+    const needs = list.some((i) => i.order == null)
+    const sorted = needs ? [...list].sort((a, b) => a.createdAt - b.createdAt) : list
+    sorted.forEach((it, i) => {
+      out.push({
+        ...it,
+        order: it.order ?? (i + 1) * ORDER_GAP,
+      })
+    })
+  }
+  return out
+}
+
+const backfillRefOrder = <T extends { itemId: string; addedAt: number; order?: number }>(
+  refs: T[],
+  itemsByCard: Map<string, string>,
+): (T & { order: number })[] => {
+  const grouped = new Map<string, T[]>()
+  for (const r of refs) {
+    const cardId = itemsByCard.get(r.itemId) ?? '__orphan__'
+    const list = grouped.get(cardId) ?? []
+    list.push(r)
+    grouped.set(cardId, list)
+  }
+  const out: (T & { order: number })[] = []
+  for (const [, list] of grouped) {
+    const needs = list.some((r) => r.order == null)
+    const sorted = needs ? [...list].sort((a, b) => a.addedAt - b.addedAt) : list
+    sorted.forEach((r, i) => {
+      out.push({ ...r, order: r.order ?? (i + 1) * ORDER_GAP } as T & { order: number })
+    })
+  }
+  return out
+}
+
 /** Atomically replaces the entire database with the snapshot. */
 export const importFromJson = async (raw: string): Promise<void> => {
   const snapshot = parse(raw)
+  const items = backfillItemOrder(snapshot.items)
+  const itemsByCard = new Map(items.map((i) => [i.id, i.cardId]))
+  const todayRefs: TodayRef[] = backfillRefOrder(snapshot.todayRefs, itemsByCard)
+  const weekRefs: WeekRef[] = backfillRefOrder(snapshot.weekRefs, itemsByCard)
+
   await db.transaction(
     'rw',
     [
@@ -49,9 +99,9 @@ export const importFromJson = async (raw: string): Promise<void> => {
       await Promise.all([
         db.boards.bulkAdd(snapshot.boards),
         db.cards.bulkAdd(snapshot.cards),
-        db.items.bulkAdd(snapshot.items),
-        db.todayRefs.bulkAdd(snapshot.todayRefs),
-        db.weekRefs.bulkAdd(snapshot.weekRefs),
+        db.items.bulkAdd(items),
+        db.todayRefs.bulkAdd(todayRefs),
+        db.weekRefs.bulkAdd(weekRefs),
         db.todayHistory.bulkAdd(snapshot.todayHistory),
         db.weekHistory.bulkAdd(snapshot.weekHistory),
       ])
