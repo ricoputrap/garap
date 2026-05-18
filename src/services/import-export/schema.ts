@@ -20,11 +20,13 @@ const item = z.object({
   completed: z.boolean(),
   completedAt: z.number().nullable(),
   createdAt: z.number(),
+  order: z.number().optional(),
 })
 
 const ref = z.object({
   itemId: z.string().min(1),
   addedAt: z.number(),
+  order: z.number().optional(),
 })
 
 const historyItem = z.object({

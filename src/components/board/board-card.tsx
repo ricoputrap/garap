@@ -1,12 +1,28 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { MoreHorizontal, Trash2, Eraser } from 'lucide-react'
-import type { Card } from '@/types/domain'
+import {
+  DndContext,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import type { Card, Item } from '@/types/domain'
 import { useCardItems } from '@/hooks/use-card-items'
 import { InlineEdit } from '@/components/inline/inline-edit'
 import { ItemRow } from '@/components/item/item-row'
+import { SortableItemRow } from '@/components/item/sortable-item-row'
 import { NewItemInput } from '@/components/item/new-item-input'
 import { ConfirmDialog } from '@/components/dialogs/confirm-dialog'
-import { clearCompletedInCard, deleteCard, renameCard } from '@/services/db'
+import { clearCompletedInCard, deleteCard, renameCard, reorderItem } from '@/services/db'
 import { cn } from '@/lib/cn'
 
 interface BoardCardProps {
@@ -51,17 +67,17 @@ export const BoardCard = ({ card, autoFocus = false }: BoardCardProps) => {
       </div>
 
       <div className="flex max-h-[260px] min-h-[40px] flex-1 flex-col">
-        <ul className={cn('scrollbar-paper flex-1 overflow-y-auto px-2 py-1.5')}>
+        <div className={cn('scrollbar-paper flex-1 overflow-y-auto px-2 py-1.5')}>
           {items === undefined ? (
             <ItemsSkeleton />
           ) : items.length === 0 ? (
-            <li className="px-2 py-4 text-center text-xs italic text-[var(--fg-3)]">
+            <p className="px-2 py-4 text-center text-xs italic text-[var(--fg-3)]">
               Nothing here yet — type below.
-            </li>
+            </p>
           ) : (
-            items.map((item) => <ItemRow key={item.id} item={item} />)
+            <CardItems items={items} />
           )}
-        </ul>
+        </div>
         <NewItemInput cardId={card.id} />
       </div>
 
@@ -129,6 +145,49 @@ const CardMenu = ({ hasCompleted, onClear, onDelete }: CardMenuProps) => {
         </>
       )}
     </div>
+  )
+}
+
+interface CardItemsProps {
+  items: Item[]
+}
+
+const CardItems = ({ items }: CardItemsProps) => {
+  const active = useMemo(() => items.filter((i) => !i.completed), [items])
+  const completed = useMemo(() => items.filter((i) => i.completed), [items])
+  const activeIds = useMemo(() => active.map((i) => i.id), [active])
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
+  const onDragEnd = (event: DragEndEvent) => {
+    const { active: dragged, over } = event
+    if (!over || dragged.id === over.id) return
+    const fromIdx = activeIds.indexOf(String(dragged.id))
+    const toIdx = activeIds.indexOf(String(over.id))
+    if (fromIdx < 0 || toIdx < 0) return
+    const next = arrayMove(activeIds, fromIdx, toIdx)
+    const newPos = next.indexOf(String(dragged.id))
+    const before = newPos > 0 ? next[newPos - 1] : null
+    const after = newPos < next.length - 1 ? next[newPos + 1] : null
+    void reorderItem(String(dragged.id), before, after)
+  }
+
+  return (
+    <ul className="space-y-0">
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <SortableContext items={activeIds} strategy={verticalListSortingStrategy}>
+          {active.map((item) => (
+            <SortableItemRow key={item.id} item={item} />
+          ))}
+        </SortableContext>
+      </DndContext>
+      {completed.map((item) => (
+        <ItemRow key={item.id} item={item} />
+      ))}
+    </ul>
   )
 }
 

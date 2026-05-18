@@ -20,16 +20,19 @@ export interface Item {
   completed: boolean
   completedAt: number | null
   createdAt: number
+  order: number
 }
 
 export interface TodayRef {
   itemId: ID
   addedAt: number
+  order: number
 }
 
 export interface WeekRef {
   itemId: ID
   addedAt: number
+  order: number
 }
 
 export type PanelTab = 'today' | 'week'
