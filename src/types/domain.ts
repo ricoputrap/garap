@@ -11,6 +11,17 @@ export interface Card {
   boardId: ID
   title: string
   createdAt: number
+  order: number
+}
+
+export interface TodayCardOrder {
+  cardId: ID
+  order: number
+}
+
+export interface WeekCardOrder {
+  cardId: ID
+  order: number
 }
 
 export interface Item {

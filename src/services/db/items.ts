@@ -6,6 +6,8 @@ import {
   orderBetween,
   rebalanced,
 } from '@/lib/ordering'
+import { pruneTodayCardOrderIfEmpty } from '@/services/list-refs/today'
+import { pruneWeekCardOrderIfEmpty } from '@/services/list-refs/week'
 import { db } from './schema'
 
 export const listItemsForCard = async (cardId: string): Promise<Item[]> => {
@@ -42,11 +44,20 @@ export const renameItem = (id: string, name: string): Promise<number> =>
   db.items.update(id, { name: name.trim() })
 
 export const deleteItem = (id: string): Promise<void> =>
-  db.transaction('rw', db.items, db.todayRefs, db.weekRefs, async () => {
-    await db.todayRefs.where('itemId').equals(id).delete()
-    await db.weekRefs.where('itemId').equals(id).delete()
-    await db.items.delete(id)
-  })
+  db.transaction(
+    'rw',
+    [db.items, db.todayRefs, db.weekRefs, db.todayCardOrders, db.weekCardOrders],
+    async () => {
+      const item = await db.items.get(id)
+      await db.todayRefs.where('itemId').equals(id).delete()
+      await db.weekRefs.where('itemId').equals(id).delete()
+      await db.items.delete(id)
+      if (item) {
+        await pruneTodayCardOrderIfEmpty(item.cardId)
+        await pruneWeekCardOrderIfEmpty(item.cardId)
+      }
+    },
+  )
 
 /**
  * Reorder an active item within its card. `beforeId` and `afterId` are the

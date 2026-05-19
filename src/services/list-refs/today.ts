@@ -16,8 +16,30 @@ const groupOrdersForCard = async (cardId: string, excludeItemId?: string) => {
     .sort((a, b) => a.order - b.order)
 }
 
+const ensureTodayCardOrder = async (cardId: string): Promise<void> => {
+  const existing = await db.todayCardOrders.get(cardId)
+  if (existing) return
+  const all = await db.todayCardOrders.toArray()
+  const lastOrder = all.length > 0 ? Math.max(...all.map((o) => o.order)) : null
+  await db.todayCardOrders.add({ cardId, order: appendAfter(lastOrder) })
+}
+
+/**
+ * Drop the today card-order entry for `cardId` if the card has no remaining
+ * today refs. Safe to call after any todayRefs deletion. Idempotent.
+ */
+export const pruneTodayCardOrderIfEmpty = async (cardId: string): Promise<void> => {
+  const items = await db.items.where('cardId').equals(cardId).toArray()
+  if (items.length === 0) {
+    await db.todayCardOrders.delete(cardId)
+    return
+  }
+  const count = await db.todayRefs.where('itemId').anyOf(items.map((i) => i.id)).count()
+  if (count === 0) await db.todayCardOrders.delete(cardId)
+}
+
 export const addToToday = async (itemId: string): Promise<void> => {
-  await db.transaction('rw', db.todayRefs, db.items, async () => {
+  await db.transaction('rw', [db.todayRefs, db.items, db.todayCardOrders], async () => {
     const existing = await db.todayRefs.get(itemId)
     if (existing) return
     const item = await db.items.get(itemId)
@@ -29,22 +51,32 @@ export const addToToday = async (itemId: string): Promise<void> => {
       addedAt: Date.now(),
       order: appendAfter(lastOrder),
     })
+    if (cardId) await ensureTodayCardOrder(cardId)
   })
 }
 
 export const removeFromToday = (itemId: string): Promise<void> =>
-  db.todayRefs.delete(itemId)
+  db.transaction('rw', [db.todayRefs, db.items, db.todayCardOrders], async () => {
+    const item = await db.items.get(itemId)
+    await db.todayRefs.delete(itemId)
+    if (item) await pruneTodayCardOrderIfEmpty(item.cardId)
+  })
 
 export const isInToday = async (itemId: string): Promise<boolean> =>
   (await db.todayRefs.get(itemId)) != null
 
 export const clearCompletedToday = (): Promise<number> =>
-  db.transaction('rw', db.todayRefs, db.items, async () => {
+  db.transaction('rw', [db.todayRefs, db.items, db.todayCardOrders], async () => {
     const refs = await db.todayRefs.toArray()
     const ids = refs.map((r) => r.itemId)
     const items = await db.items.bulkGet(ids)
-    const doneIds = items.filter((i) => i?.completed).map((i) => i!.id)
+    const doneItems = items.filter((i): i is NonNullable<typeof i> => i != null && i.completed)
+    const doneIds = doneItems.map((i) => i.id)
     await db.todayRefs.where('itemId').anyOf(doneIds).delete()
+    const affectedCards = Array.from(new Set(doneItems.map((i) => i.cardId)))
+    for (const cardId of affectedCards) {
+      await pruneTodayCardOrderIfEmpty(cardId)
+    }
     return doneIds.length
   })
 
@@ -61,7 +93,6 @@ export const reorderTodayRef = async (
     const item = await db.items.get(itemId)
     if (!item) return
     const groupAll = await groupOrdersForCard(item.cardId, itemId)
-    // Drag scope is active items only; filter completed out for neighbour math.
     const items = await db.items.bulkGet(groupAll.map((r) => r.itemId))
     const completed = new Set(
       items.filter((i) => i?.completed).map((i) => i!.id),
@@ -84,6 +115,36 @@ export const reorderTodayRef = async (
       await Promise.all(updates.map((u) => db.todayRefs.update(u.id, { order: u.order })))
     } else {
       await db.todayRefs.update(itemId, { order: newOrder })
+    }
+  })
+}
+
+/**
+ * Reorder a card-group inside the Today panel. Neighbours are sibling card ids
+ * adjacent to the drop position; either may be null (head/tail).
+ */
+export const reorderTodayCardGroup = async (
+  cardId: string,
+  beforeId: string | null,
+  afterId: string | null,
+): Promise<void> => {
+  await db.transaction('rw', db.todayCardOrders, async () => {
+    const current = await db.todayCardOrders.get(cardId)
+    if (!current) return
+    const siblings = (await db.todayCardOrders.toArray())
+      .filter((s) => s.cardId !== cardId)
+      .sort((a, b) => a.order - b.order)
+
+    const before = beforeId ? siblings.find((s) => s.cardId === beforeId) ?? null : null
+    const after = afterId ? siblings.find((s) => s.cardId === afterId) ?? null : null
+    const newOrder = orderBetween(before?.order ?? null, after?.order ?? null)
+
+    const projected = [...siblings, { cardId, order: newOrder }].sort((a, b) => a.order - b.order)
+    if (needsRebalance(projected)) {
+      const updates = rebalanced(projected.map((r) => ({ id: r.cardId, order: r.order })))
+      await Promise.all(updates.map((u) => db.todayCardOrders.update(u.id, { order: u.order })))
+    } else {
+      await db.todayCardOrders.update(cardId, { order: newOrder })
     }
   })
 }

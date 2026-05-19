@@ -1,9 +1,25 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Plus } from 'lucide-react'
+import {
+  DndContext,
+  PointerSensor,
+  TouchSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  rectSortingStrategy,
+  sortableKeyboardCoordinates,
+} from '@dnd-kit/sortable'
 import type { Card } from '@/types/domain'
 import { useCards } from '@/hooks/use-cards'
-import { createCard } from '@/services/db'
-import { BoardCard } from './board-card'
+import { createCard, reorderCard } from '@/services/db'
+import { SortableBoardCard } from './sortable-board-card'
 
 interface BoardGridProps {
   boardId: string
@@ -13,6 +29,14 @@ export const BoardGrid = ({ boardId }: BoardGridProps) => {
   const cards = useCards(boardId)
   const [autoFocusCardId, setAutoFocusCardId] = useState<string | null>(null)
 
+  const cardIds = useMemo(() => (cards ?? []).map((c) => c.id), [cards])
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
   if (cards === undefined) return <BoardGridSkeleton />
 
   const handleNewCard = async () => {
@@ -20,16 +44,37 @@ export const BoardGrid = ({ boardId }: BoardGridProps) => {
     setAutoFocusCardId(card.id)
   }
 
+  const onDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const fromIdx = cardIds.indexOf(String(active.id))
+    const toIdx = cardIds.indexOf(String(over.id))
+    if (fromIdx < 0 || toIdx < 0) return
+    const next = arrayMove(cardIds, fromIdx, toIdx)
+    const newPos = next.indexOf(String(active.id))
+    const before = newPos > 0 ? next[newPos - 1] : null
+    const after = newPos < next.length - 1 ? next[newPos + 1] : null
+    void reorderCard(String(active.id), before, after)
+  }
+
   return (
-    <div
-      className="grid gap-5"
-      style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}
-    >
-      {cards.map((card: Card) => (
-        <BoardCard key={card.id} card={card} autoFocus={card.id === autoFocusCardId} />
-      ))}
-      <NewCardTile onClick={handleNewCard} />
-    </div>
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+      <SortableContext items={cardIds} strategy={rectSortingStrategy}>
+        <div
+          className="grid gap-5"
+          style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}
+        >
+          {cards.map((card: Card) => (
+            <SortableBoardCard
+              key={card.id}
+              card={card}
+              autoFocus={card.id === autoFocusCardId}
+            />
+          ))}
+          <NewCardTile onClick={handleNewCard} />
+        </div>
+      </SortableContext>
+    </DndContext>
   )
 }
 

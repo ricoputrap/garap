@@ -1,4 +1,4 @@
-import type { Item, TodayRef, WeekRef } from '@/types/domain'
+import type { Card, Item, TodayRef, WeekRef } from '@/types/domain'
 import { ORDER_GAP } from '@/lib/ordering'
 import { db } from '@/services/db/schema'
 import { snapshotSchema, type Snapshot } from './schema'
@@ -22,6 +22,24 @@ const parse = (raw: string): Snapshot => {
     throw new ImportError('Backup shape is invalid — wrong file?')
   }
   return result.data
+}
+
+const backfillCardOrder = (cards: Snapshot['cards']): Card[] => {
+  const grouped = new Map<string, typeof cards>()
+  for (const c of cards) {
+    const list = grouped.get(c.boardId) ?? []
+    list.push(c)
+    grouped.set(c.boardId, list)
+  }
+  const out: Card[] = []
+  for (const [, list] of grouped) {
+    const needs = list.some((c) => c.order == null)
+    const sorted = needs ? [...list].sort((a, b) => a.createdAt - b.createdAt) : list
+    sorted.forEach((c, i) => {
+      out.push({ ...c, order: c.order ?? (i + 1) * ORDER_GAP })
+    })
+  }
+  return out
 }
 
 const backfillItemOrder = (items: Snapshot['items']): Item[] => {
@@ -70,10 +88,29 @@ const backfillRefOrder = <T extends { itemId: string; addedAt: number; order?: n
 /** Atomically replaces the entire database with the snapshot. */
 export const importFromJson = async (raw: string): Promise<void> => {
   const snapshot = parse(raw)
+  const cards = backfillCardOrder(snapshot.cards)
   const items = backfillItemOrder(snapshot.items)
   const itemsByCard = new Map(items.map((i) => [i.id, i.cardId]))
   const todayRefs: TodayRef[] = backfillRefOrder(snapshot.todayRefs, itemsByCard)
   const weekRefs: WeekRef[] = backfillRefOrder(snapshot.weekRefs, itemsByCard)
+
+  // Seed panel card-order tables by first-appearance card order within each panel.
+  const seedCardOrders = (
+    refs: { itemId: string; order: number }[],
+  ): { cardId: string; order: number }[] => {
+    const sorted = [...refs].sort((a, b) => a.order - b.order)
+    const seen = new Set<string>()
+    const cardOrder: string[] = []
+    for (const r of sorted) {
+      const cardId = itemsByCard.get(r.itemId)
+      if (!cardId || seen.has(cardId)) continue
+      seen.add(cardId)
+      cardOrder.push(cardId)
+    }
+    return cardOrder.map((cardId, i) => ({ cardId, order: (i + 1) * ORDER_GAP }))
+  }
+  const todayCardOrders = seedCardOrders(todayRefs)
+  const weekCardOrders = seedCardOrders(weekRefs)
 
   await db.transaction(
     'rw',
@@ -85,6 +122,8 @@ export const importFromJson = async (raw: string): Promise<void> => {
       db.weekRefs,
       db.todayHistory,
       db.weekHistory,
+      db.todayCardOrders,
+      db.weekCardOrders,
     ],
     async () => {
       await Promise.all([
@@ -95,15 +134,19 @@ export const importFromJson = async (raw: string): Promise<void> => {
         db.weekRefs.clear(),
         db.todayHistory.clear(),
         db.weekHistory.clear(),
+        db.todayCardOrders.clear(),
+        db.weekCardOrders.clear(),
       ])
       await Promise.all([
         db.boards.bulkAdd(snapshot.boards),
-        db.cards.bulkAdd(snapshot.cards),
+        db.cards.bulkAdd(cards),
         db.items.bulkAdd(items),
         db.todayRefs.bulkAdd(todayRefs),
         db.weekRefs.bulkAdd(weekRefs),
         db.todayHistory.bulkAdd(snapshot.todayHistory),
         db.weekHistory.bulkAdd(snapshot.weekHistory),
+        db.todayCardOrders.bulkAdd(todayCardOrders),
+        db.weekCardOrders.bulkAdd(weekCardOrders),
       ])
     },
   )

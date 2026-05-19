@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { forwardRef, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { MoreHorizontal, Trash2, Eraser } from 'lucide-react'
 import {
   DndContext,
@@ -28,9 +28,15 @@ import { cn } from '@/lib/cn'
 interface BoardCardProps {
   card: Card
   autoFocus?: boolean
+  dragHandle?: ReactNode
+  articleStyle?: CSSProperties
+  articleAttributes?: Record<string, unknown>
 }
 
-export const BoardCard = ({ card, autoFocus = false }: BoardCardProps) => {
+export const BoardCard = forwardRef<HTMLElement, BoardCardProps>(function BoardCard(
+  { card, autoFocus = false, dragHandle, articleStyle, articleAttributes },
+  ref,
+) {
   const items = useCardItems(card.id)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
@@ -39,8 +45,14 @@ export const BoardCard = ({ card, autoFocus = false }: BoardCardProps) => {
   const hasCompleted = (items?.length ?? 0) > activeCount
 
   return (
-    <article className="group relative flex flex-col rounded-2xl border border-[var(--rule)] bg-[var(--bg)] shadow-[var(--shadow-paper)] transition-all hover:border-[var(--fg-3)]/40 hover:shadow-[0_2px_0_var(--rule),0_18px_36px_-24px_rgba(0,0,0,0.28)]">
+    <article
+      ref={ref}
+      style={articleStyle}
+      className="group relative flex flex-col rounded-2xl border border-[var(--rule)] bg-[var(--bg)] shadow-[var(--shadow-paper)] transition-all hover:border-[var(--fg-3)]/40 hover:shadow-[0_2px_0_var(--rule),0_18px_36px_-24px_rgba(0,0,0,0.28)]"
+      {...articleAttributes}
+    >
       <div className="rule-line flex items-start justify-between gap-3 px-4 pt-4 pb-3">
+        {dragHandle}
         <div className="min-w-0 flex-1">
           <InlineEdit
             value={card.title}
@@ -92,7 +104,7 @@ export const BoardCard = ({ card, autoFocus = false }: BoardCardProps) => {
       />
     </article>
   )
-}
+})
 
 interface CardMenuProps {
   hasCompleted: boolean

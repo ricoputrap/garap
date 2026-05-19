@@ -12,6 +12,8 @@ afterEach(async () => {
     db.weekRefs.clear(),
     db.todayHistory.clear(),
     db.weekHistory.clear(),
+    db.todayCardOrders.clear(),
+    db.weekCardOrders.clear(),
   ])
   localStorage.clear()
 })

@@ -3,8 +3,10 @@ import type {
   Board,
   Card,
   Item,
+  TodayCardOrder,
   TodayHistory,
   TodayRef,
+  WeekCardOrder,
   WeekHistory,
   WeekRef,
 } from '@/types/domain'
@@ -17,6 +19,8 @@ export class GarapDB extends Dexie {
   weekRefs!: EntityTable<WeekRef, 'itemId'>
   todayHistory!: EntityTable<TodayHistory, 'date'>
   weekHistory!: EntityTable<WeekHistory, 'weekStart'>
+  todayCardOrders!: EntityTable<TodayCardOrder, 'cardId'>
+  weekCardOrders!: EntityTable<WeekCardOrder, 'cardId'>
 
   constructor() {
     super('garap')
@@ -76,6 +80,51 @@ export class GarapDB extends Dexie {
         }
         await backfillRefs('todayRefs')
         await backfillRefs('weekRefs')
+      })
+    this.version(4)
+      .stores({
+        cards: 'id, boardId, createdAt, order',
+        todayCardOrders: 'cardId, order',
+        weekCardOrders: 'cardId, order',
+      })
+      .upgrade(async (tx) => {
+        const GAP = 1000
+        const cards = (await tx.table('cards').toArray()) as Card[]
+        const byBoard = new Map<string, Card[]>()
+        for (const c of cards) {
+          const list = byBoard.get(c.boardId) ?? []
+          list.push(c)
+          byBoard.set(c.boardId, list)
+        }
+        for (const [, list] of byBoard) {
+          list.sort((a, b) => a.createdAt - b.createdAt)
+          for (let i = 0; i < list.length; i += 1) {
+            list[i].order = (i + 1) * GAP
+          }
+        }
+        await tx.table('cards').bulkPut(cards)
+
+        const items = (await tx.table('items').toArray()) as Item[]
+        const itemMap = new Map(items.map((i) => [i.id, i]))
+
+        const seedCardOrders = async (refTable: string, orderTable: string) => {
+          const refs = (await tx.table(refTable).toArray()) as { itemId: string; order: number }[]
+          if (refs.length === 0) return
+          refs.sort((a, b) => a.order - b.order)
+          const seen = new Set<string>()
+          const cardOrder: string[] = []
+          for (const r of refs) {
+            const item = itemMap.get(r.itemId)
+            if (!item) continue
+            if (seen.has(item.cardId)) continue
+            seen.add(item.cardId)
+            cardOrder.push(item.cardId)
+          }
+          const rows = cardOrder.map((cardId, i) => ({ cardId, order: (i + 1) * GAP }))
+          if (rows.length > 0) await tx.table(orderTable).bulkPut(rows)
+        }
+        await seedCardOrders('todayRefs', 'todayCardOrders')
+        await seedCardOrders('weekRefs', 'weekCardOrders')
       })
   }
 }

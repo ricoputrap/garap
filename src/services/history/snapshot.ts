@@ -1,5 +1,7 @@
 import { db } from '@/services/db/schema'
 import { startOfLocalDay, startOfLocalWeek } from '@/lib/date'
+import { pruneTodayCardOrderIfEmpty } from '@/services/list-refs/today'
+import { pruneWeekCardOrderIfEmpty } from '@/services/list-refs/week'
 import type { HistoryItem, Item } from '@/types/domain'
 
 export interface SnapshotResult {
@@ -40,7 +42,7 @@ const buildHistoryItems = async (items: Item[]): Promise<HistoryItem[]> => {
 export const snapshotAndClearToday = async (now: number = Date.now()): Promise<SnapshotResult> =>
   db.transaction(
     'rw',
-    [db.todayRefs, db.items, db.cards, db.boards, db.todayHistory],
+    [db.todayRefs, db.items, db.cards, db.boards, db.todayHistory, db.todayCardOrders],
     async () => {
       const refs = await db.todayRefs.toArray()
       const ids = refs.map((r) => r.itemId)
@@ -54,6 +56,10 @@ export const snapshotAndClearToday = async (now: number = Date.now()): Promise<S
         await db.todayHistory.add({ date, clearedAt: now, items: historyItems })
       }
       await db.todayRefs.where('itemId').anyOf(completed.map((i) => i.id)).delete()
+      const affectedCards = Array.from(new Set(completed.map((i) => i.cardId)))
+      for (const cardId of affectedCards) {
+        await pruneTodayCardOrderIfEmpty(cardId)
+      }
       return { count: completed.length, items: historyItems }
     },
   )
@@ -61,7 +67,7 @@ export const snapshotAndClearToday = async (now: number = Date.now()): Promise<S
 export const snapshotAndClearWeek = async (now: number = Date.now()): Promise<SnapshotResult> =>
   db.transaction(
     'rw',
-    [db.weekRefs, db.items, db.cards, db.boards, db.weekHistory],
+    [db.weekRefs, db.items, db.cards, db.boards, db.weekHistory, db.weekCardOrders],
     async () => {
       const refs = await db.weekRefs.toArray()
       const ids = refs.map((r) => r.itemId)
@@ -75,6 +81,10 @@ export const snapshotAndClearWeek = async (now: number = Date.now()): Promise<Sn
         await db.weekHistory.add({ weekStart, clearedAt: now, items: historyItems })
       }
       await db.weekRefs.where('itemId').anyOf(completed.map((i) => i.id)).delete()
+      const affectedCards = Array.from(new Set(completed.map((i) => i.cardId)))
+      for (const cardId of affectedCards) {
+        await pruneWeekCardOrderIfEmpty(cardId)
+      }
       return { count: completed.length, items: historyItems }
     },
   )

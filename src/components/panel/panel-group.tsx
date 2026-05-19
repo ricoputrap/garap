@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { forwardRef, useMemo, type CSSProperties, type ReactNode } from 'react'
 import {
   DndContext,
   PointerSensor,
@@ -25,9 +25,15 @@ interface PanelGroupProps {
   boardName: string
   items: PanelItem[]
   tab: PanelTab
+  dragHandle?: ReactNode
+  sectionStyle?: CSSProperties
+  sectionAttributes?: Record<string, unknown>
 }
 
-export const PanelGroup = ({ cardTitle, boardName, items, tab }: PanelGroupProps) => {
+export const PanelGroup = forwardRef<HTMLElement, PanelGroupProps>(function PanelGroup(
+  { cardTitle, boardName, items, tab, dragHandle, sectionStyle, sectionAttributes },
+  ref,
+) {
   const active = useMemo(() => items.filter((p) => !p.item.completed), [items])
   const completed = useMemo(() => items.filter((p) => p.item.completed), [items])
   const activeIds = useMemo(() => active.map((p) => p.item.id), [active])
@@ -52,8 +58,9 @@ export const PanelGroup = ({ cardTitle, boardName, items, tab }: PanelGroupProps
   }
 
   return (
-    <section className="space-y-2">
+    <section ref={ref} style={sectionStyle} className="group space-y-2" {...sectionAttributes}>
       <header className="flex items-baseline gap-2 px-1">
+        {dragHandle}
         <h3 className="font-display text-base font-medium tracking-tight text-[var(--fg)]">
           {cardTitle}
         </h3>
@@ -75,4 +82,4 @@ export const PanelGroup = ({ cardTitle, boardName, items, tab }: PanelGroupProps
       </ul>
     </section>
   )
-}
+})

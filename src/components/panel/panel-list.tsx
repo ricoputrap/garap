@@ -1,9 +1,27 @@
 import { useMemo } from 'react'
 import { Eraser } from 'lucide-react'
+import {
+  DndContext,
+  PointerSensor,
+  TouchSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
 import type { PanelTab } from '@/types/domain'
 import type { PanelItem } from '@/services/db/queries'
 import { Button } from '@/components/ui/button'
-import { PanelGroup } from './panel-group'
+import { reorderTodayCardGroup } from '@/services/list-refs/today'
+import { reorderWeekCardGroup } from '@/services/list-refs/week'
+import { SortablePanelGroup } from './sortable-panel-group'
 
 interface Group {
   cardId: string
@@ -39,6 +57,27 @@ interface PanelListProps {
 
 export const PanelList = ({ tab, items, emptyHint }: PanelListProps) => {
   const groups = useMemo(() => (items ? groupByCard(items) : []), [items])
+  const groupIds = useMemo(() => groups.map((g) => g.cardId), [groups])
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
+  const onDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const fromIdx = groupIds.indexOf(String(active.id))
+    const toIdx = groupIds.indexOf(String(over.id))
+    if (fromIdx < 0 || toIdx < 0) return
+    const next = arrayMove(groupIds, fromIdx, toIdx)
+    const newPos = next.indexOf(String(active.id))
+    const before = newPos > 0 ? next[newPos - 1] : null
+    const after = newPos < next.length - 1 ? next[newPos + 1] : null
+    const reorder = tab === 'today' ? reorderTodayCardGroup : reorderWeekCardGroup
+    void reorder(String(active.id), before, after)
+  }
 
   if (items === undefined) return <PanelSkeleton />
 
@@ -53,15 +92,20 @@ export const PanelList = ({ tab, items, emptyHint }: PanelListProps) => {
 
   return (
     <div className="scrollbar-paper mt-2 max-h-[calc(100vh-260px)] space-y-5 overflow-y-auto pr-1 md:max-h-[calc(100vh-260px)]">
-      {groups.map((g) => (
-        <PanelGroup
-          key={g.cardId}
-          cardTitle={g.cardTitle}
-          boardName={g.boardName}
-          items={g.items}
-          tab={tab}
-        />
-      ))}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <SortableContext items={groupIds} strategy={verticalListSortingStrategy}>
+          {groups.map((g) => (
+            <SortablePanelGroup
+              key={g.cardId}
+              cardId={g.cardId}
+              cardTitle={g.cardTitle}
+              boardName={g.boardName}
+              items={g.items}
+              tab={tab}
+            />
+          ))}
+        </SortableContext>
+      </DndContext>
     </div>
   )
 }

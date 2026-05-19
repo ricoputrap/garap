@@ -11,6 +11,7 @@ const card = z.object({
   boardId: z.string().min(1),
   title: z.string(),
   createdAt: z.number(),
+  order: z.number().optional(),
 })
 
 const item = z.object({
